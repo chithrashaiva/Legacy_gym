@@ -1,0 +1,30 @@
+services:
+  # -------------------------------------------------------------
+  # Frontend Static Site (React / Vite)
+  # -------------------------------------------------------------
+  - type: web
+    name: legacy-gym-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # -------------------------------------------------------------
+  # Backend Web Service (Django / REST Framework)
+  # -------------------------------------------------------------
+  - type: web
+    name: legacy-gym-backend
+    env: python
+    region: singapore
+    buildCommand: cd backend && pip install -r requirements.txt && python manage.py migrate
+    startCommand: cd backend && gunicorn config.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11 text
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"

@@ -10,6 +10,7 @@ import Membership from './pages/Membership';
 import Contact from './pages/Contact';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import QRCodePage from './pages/QRCodePage';
 
 // A simple protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -53,6 +54,8 @@ function App() {
                     <Route path="/gallery" element={<Gallery />} />
                     <Route path="/membership" element={<Membership />} />
                     <Route path="/contact" element={<Contact />} />
+                    <Route path="/qr" element={<QRCodePage />} />
+                    <Route path="/scanner" element={<QRCodePage />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
 
