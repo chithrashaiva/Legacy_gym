@@ -16,7 +16,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: VITE_API_URL
-        value: "/api"
+        value: /api
 
   # -------------------------------------------------------------
   # Standalone Frontend Static Site

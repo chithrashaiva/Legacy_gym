@@ -1,7 +1,12 @@
 import axios from 'axios';
 
 const getApiUrl = () => {
-    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl) {
+        // Strip extraneous quotes (e.g. '"/api"' -> '/api') and trailing slashes
+        const cleaned = envUrl.replace(/^['"]+|['"]+$/g, '').trim().replace(/\/+$/, '');
+        if (cleaned) return cleaned;
+    }
     if (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')) {
         return 'https://legacy-gym-backend.onrender.com/api';
     }
