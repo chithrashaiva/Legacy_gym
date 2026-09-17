@@ -1,6 +1,25 @@
 services:
   # -------------------------------------------------------------
-  # Frontend Static Site (React / Vite)
+  # Unified Monolith Service (Frontend + Backend in One)
+  # -------------------------------------------------------------
+  - type: web
+    name: legacy-gym
+    env: python
+    region: singapore
+    buildCommand: cd frontend && npm install --include=dev && npm run build && cd ../backend && pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: cd backend && gunicorn config.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: VITE_API_URL
+        value: "/api"
+
+  # -------------------------------------------------------------
+  # Standalone Frontend Static Site
   # -------------------------------------------------------------
   - type: web
     name: legacy-gym-frontend
@@ -18,7 +37,7 @@ services:
         destination: /index.html
 
   # -------------------------------------------------------------
-  # Backend Web Service (Django / REST Framework)
+  # Standalone Backend Web Service
   # -------------------------------------------------------------
   - type: web
     name: legacy-gym-backend
@@ -28,7 +47,7 @@ services:
     startCommand: cd backend && gunicorn config.wsgi:application
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11 text
+        value: "3.11"
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG

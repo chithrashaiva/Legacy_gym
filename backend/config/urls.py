@@ -14,11 +14,13 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import os
 from django.contrib import admin
-from django.urls import path, include
-from django.http import JsonResponse
+from django.urls import path, include, re_path
+from django.http import JsonResponse, FileResponse
+from django.conf import settings
 
-def root_view(request):
+def api_status_view(request):
     return JsonResponse({
         "status": "online",
         "message": "Legacy Gym Backend API",
@@ -31,9 +33,16 @@ def root_view(request):
         }
     })
 
+def spa_fallback_view(request):
+    index_path = settings.BASE_DIR.parent / 'frontend' / 'dist' / 'index.html'
+    if os.path.exists(index_path):
+        return FileResponse(open(index_path, 'rb'))
+    return api_status_view(request)
+
 urlpatterns = [
-    path('', root_view, name='api_root'),
     path('admin/', admin.site.urls),
+    path('api/status/', api_status_view, name='api_status'),
     path('api/auth/', include('accounts.urls')),
+    re_path(r'^(?:(?!api|admin).)*$', spa_fallback_view, name='spa_index'),
 ]
 
