@@ -4,7 +4,7 @@ import { QrCode, Download, Printer, Copy, Check, ExternalLink, Sparkles, Smartph
 
 export default function QRCodePage() {
   // Default to window.location.origin or Render URL placeholder
-  const defaultUrl = typeof window !== 'undefined' ? window.location.origin : 'https://legacy-gym.onrender.com';
+  const defaultUrl = typeof window !== 'undefined' ? window.location.origin : 'https://legacy-gym-frontend.onrender.com';
   const [websiteUrl, setWebsiteUrl] = useState(defaultUrl);
   const [copied, setCopied] = useState(false);
   const qrRef = useRef(null);
