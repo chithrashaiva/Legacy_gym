@@ -32,10 +32,36 @@ export default function Register() {
 
         try {
             const { confirmPassword, ...submitData } = formData;
-            await register(submitData);
+            // Clean empty strings for optional fields
+            const cleanedData = {};
+            Object.keys(submitData).forEach(key => {
+                if (submitData[key] !== '' && submitData[key] !== null && submitData[key] !== undefined) {
+                    cleanedData[key] = submitData[key];
+                }
+            });
+            await register(cleanedData);
             navigate('/login');
         } catch (err) {
-            setError(err.response?.data?.detail || 'Failed to register. Please check your inputs.');
+            console.error('Registration error:', err.response?.data);
+            if (err.response?.data) {
+                const data = err.response.data;
+                if (typeof data === 'string') {
+                    setError(data);
+                } else if (data.detail && typeof data.detail === 'string') {
+                    setError(data.detail);
+                } else if (typeof data === 'object') {
+                    const messages = Object.entries(data).map(([field, errs]) => {
+                        const fieldName = field.replace('_', ' ');
+                        const msgText = Array.isArray(errs) ? errs.join(' ') : String(errs);
+                        return `${fieldName}: ${msgText}`;
+                    });
+                    setError(messages.join(' | '));
+                } else {
+                    setError('Failed to register. Please check your inputs.');
+                }
+            } else {
+                setError('Failed to connect to the backend server. Please try again.');
+            }
         }
     };
 
