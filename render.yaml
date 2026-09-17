@@ -10,6 +10,8 @@ services:
     envVars:
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
+      - key: VITE_API_URL
+        value: "https://legacy-gym-backend.onrender.com/api"
     routes:
       - type: rewrite
         source: /*
