@@ -26,7 +26,12 @@ SECRET_KEY = 'django-insecure---+7@i9%85@cat_9&3&w=j4zylw&q=_1&i*7@ab^7!0!j+rnj$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'legacy-gym-backend.onrender.com',
+    '.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 
 
 # Application definition
