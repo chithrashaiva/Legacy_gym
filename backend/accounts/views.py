@@ -200,14 +200,30 @@ class UpdateMembershipView(APIView):
             if 'status' in request.data:
                 membership.status = request.data['status']
             if 'date_of_joining' in request.data:
-                membership.date_of_joining = request.data['date_of_joining']
+                doj = request.data.get('date_of_joining')
+                membership.date_of_joining = doj if (doj and str(doj).strip() != "") else None
             if 'end_date' in request.data:
-                membership.end_date = request.data['end_date']
+                ed = request.data.get('end_date')
+                membership.end_date = ed if (ed and str(ed).strip() != "") else None
             
             membership.save()
             return Response(MembershipSerializer(membership).data)
         except User.DoesNotExist:
             return Response({'error': 'Member not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class DeleteMemberView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def delete(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+            if user.role in ['admin', 'super_admin'] and User.objects.filter(role__in=['admin', 'super_admin']).count() <= 1:
+                return Response({'error': 'Cannot delete the primary admin account'}, status=status.HTTP_400_BAD_REQUEST)
+            user.delete()
+            return Response({'message': 'Client removed from gym registry successfully'})
+        except User.DoesNotExist:
+            return Response({'error': 'Client not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 # --- Category Specific Guidance Views ---

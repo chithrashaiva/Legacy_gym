@@ -18,6 +18,11 @@ export const portalService = {
         return response.data;
     },
 
+    async deleteMember(userId) {
+        const response = await api.delete(`/portal/members/${userId}/`);
+        return response.data;
+    },
+
     // 2-Step OTP Verification
     async sendAdminOTP(phoneNumber, username = '') {
         const response = await api.post('/portal/send-otp/', { phone_number: phoneNumber, username });

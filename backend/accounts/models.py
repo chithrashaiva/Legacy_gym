@@ -48,9 +48,9 @@ class Membership(models.Model):
     plan_name = models.CharField(max_length=50, choices=PLAN_CHOICES, default='3_months')
     plan_title = models.CharField(max_length=100, default='3 Months Pro')
     fitness_category = models.CharField(max_length=30, choices=User.FITNESS_CATEGORY_CHOICES, default='general_fitness')
-    date_of_joining = models.DateField(default=timezone.now)
-    start_date = models.DateField(default=timezone.now)
-    end_date = models.DateField()
+    date_of_joining = models.DateField(default=timezone.now, null=True, blank=True)
+    start_date = models.DateField(default=timezone.now, null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     total_fee = models.DecimalField(max_digits=10, decimal_places=2, default=9999.00)
     paid_fee = models.DecimalField(max_digits=10, decimal_places=2, default=6000.00)
     balance_due = models.DecimalField(max_digits=10, decimal_places=2, default=3999.00)
@@ -60,8 +60,16 @@ class Membership(models.Model):
 
     def save(self, *args, **kwargs):
         self.balance_due = max(0, float(self.total_fee) - float(self.paid_fee))
-        if self.end_date and self.end_date < timezone.now().date():
-            self.status = 'expired'
+        if self.end_date:
+            try:
+                import datetime
+                end_d = self.end_date
+                if isinstance(end_d, str):
+                    end_d = datetime.date.fromisoformat(end_d)
+                if end_d < timezone.now().date():
+                    self.status = 'expired'
+            except Exception:
+                pass
         super().save(*args, **kwargs)
 
     def __str__(self):

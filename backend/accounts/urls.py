@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterView, CustomTokenObtainPairView, UserDetailView,
     MemberDashboardSummaryView, AdminPortalOverviewView,
-    UpdateMembershipView, WorkoutPlanViewSet, DietPlanViewSet,
+    UpdateMembershipView, DeleteMemberView, WorkoutPlanViewSet, DietPlanViewSet,
     TrainerInstructionCreateView, SendAdminOTPView, VerifyAdminOTPView,
     GymGalleryMediaView, GymGalleryMediaDetailView, CategoryGuidanceView,
     MemberDailyWorkoutLogView
@@ -26,6 +26,7 @@ urlpatterns = [
     # Admin Portal
     path('portal/admin-overview/', AdminPortalOverviewView.as_view(), name='admin_overview'),
     path('portal/members/<int:user_id>/membership/', UpdateMembershipView.as_view(), name='update_membership'),
+    path('portal/members/<int:user_id>/', DeleteMemberView.as_view(), name='delete_member'),
     
     # Workout & Diet Plans
     path('portal/workouts/', WorkoutPlanViewSet.as_view(), name='workouts'),

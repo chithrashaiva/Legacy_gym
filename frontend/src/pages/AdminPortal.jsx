@@ -215,6 +215,17 @@ export default function AdminPortal() {
         }
     };
 
+    const handleDeleteMember = async (memberId, memberName) => {
+        if (!window.confirm(`Are you sure you want to remove client "${memberName}" from Legacy Gym registry?`)) return;
+        try {
+            await portalService.deleteMember(memberId);
+            fetchOverview();
+        } catch (err) {
+            console.error('Error deleting member', err);
+            alert(err.response?.data?.error || 'Failed to remove member.');
+        }
+    };
+
     const handleSendInstruction = async (e) => {
         e.preventDefault();
         try {
@@ -854,12 +865,21 @@ export default function AdminPortal() {
                                                 </span>
                                             </td>
                                             <td className="py-3.5 px-4 text-right">
-                                                <button
-                                                    onClick={() => handleEditClick(member)}
-                                                    className="px-3 py-1.5 bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 font-medium rounded-lg transition-colors inline-flex items-center gap-1.5"
-                                                >
-                                                    <Edit3 className="w-3 h-3" /> Edit Data
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEditClick(member)}
+                                                        className="px-3 py-1.5 bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 font-medium rounded-lg transition-colors inline-flex items-center gap-1.5"
+                                                    >
+                                                        <Edit3 className="w-3 h-3" /> Edit Data
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteMember(member.id, member.first_name ? `${member.first_name} ${member.last_name || ''}` : member.username)}
+                                                        className="px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 rounded-lg transition-colors inline-flex items-center gap-1"
+                                                        title="Remove Client"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" /> Remove
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
