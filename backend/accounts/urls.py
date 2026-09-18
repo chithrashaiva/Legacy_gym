@@ -6,15 +6,16 @@ from .views import (
     UpdateMembershipView, DeleteMemberView, WorkoutPlanViewSet, DietPlanViewSet,
     TrainerInstructionCreateView, SendAdminOTPView, VerifyAdminOTPView,
     GymGalleryMediaView, GymGalleryMediaDetailView, CategoryGuidanceView,
-    MemberDailyWorkoutLogView
+    MemberDailyWorkoutLogView, CaptchaGenerateView
 )
 
 urlpatterns = [
-    # Auth
+    # Auth & Captcha
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', CustomTokenObtainPairView.as_view(), name='login'),
     path('refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/', UserDetailView.as_view(), name='user_detail'),
+    path('captcha/', CaptchaGenerateView.as_view(), name='captcha'),
 
     # 2-Step OTP Verification
     path('portal/send-otp/', SendAdminOTPView.as_view(), name='send_admin_otp'),

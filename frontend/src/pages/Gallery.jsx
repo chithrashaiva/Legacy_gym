@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, ZoomIn, Dumbbell, Video, Play, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+    X, ZoomIn, Dumbbell, Video, Play, Sparkles, UserCheck,
+    CreditCard, Target, ArrowRight, MessageSquare, ShieldCheck,
+    PhoneCall, CheckCircle2, ChevronRight, Trophy, Flame
+} from 'lucide-react';
 import { portalService } from '../services/portalService';
 
 export default function Gallery() {
@@ -95,7 +100,7 @@ export default function Gallery() {
   const ImageCard = ({ image }) => (
     <div 
       onClick={() => setSelectedImage(image)}
-      className="group cursor-pointer relative overflow-hidden rounded-xl border border-amber-500/30 hover:border-amber-400 transition-all duration-300 bg-zinc-900 shadow-xl hover:shadow-2xl hover:shadow-amber-500/10 flex flex-col justify-between"
+      className="group cursor-pointer relative overflow-hidden rounded-2xl border border-zinc-800 hover:border-amber-500/50 transition-all duration-300 bg-zinc-900 shadow-xl hover:shadow-2xl hover:shadow-amber-500/10 flex flex-col justify-between"
     >
       <div className="aspect-[4/3] overflow-hidden relative bg-black">
         {image.media_type === 'video' ? (
@@ -133,16 +138,16 @@ export default function Gallery() {
 
       <div className="p-5 flex flex-col justify-between flex-1 bg-gradient-to-b from-zinc-900 to-zinc-950">
         <div>
-          <h3 className="text-xl font-bold text-amber-400 group-hover:text-amber-300 transition mb-2">
+          <h3 className="text-lg font-bold text-amber-400 group-hover:text-amber-300 transition mb-2">
             {image.title}
           </h3>
-          <p className="text-gray-300 text-sm line-clamp-2 leading-relaxed">
+          <p className="text-gray-300 text-xs line-clamp-2 leading-relaxed">
             {image.description}
           </p>
         </div>
-        <div className="mt-4 pt-3 border-t border-amber-500/10 flex items-center justify-between text-xs text-amber-400 font-medium">
-          <span>{image.tag}</span>
-          <span className="underline group-hover:text-amber-300">
+        <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-between text-xs text-amber-400 font-medium">
+          <span className="text-zinc-400 font-mono text-[11px]">{image.tag}</span>
+          <span className="underline group-hover:text-amber-300 flex items-center gap-1">
             {image.media_type === 'video' ? 'Play Video →' : 'View Full Photo →'}
           </span>
         </div>
@@ -208,29 +213,126 @@ export default function Gallery() {
   );
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans">
-      <header className="relative py-20 bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-black border-b border-amber-500/20 overflow-hidden">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-amber-500 selection:text-black">
+      
+      {/* QUICK WEBPAGE SWITCHER BAR */}
+      <div className="bg-zinc-950 border-b border-zinc-800 py-3 px-4 sticky top-0 z-30 backdrop-blur-md bg-zinc-950/90">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-zinc-400 font-semibold">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>Legacy Quick Switcher:</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Link
+              to="/trainers"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-amber-500 hover:text-black text-zinc-300 font-bold border border-zinc-800 transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-amber-400" />
+              Contact Trainer
+            </Link>
+
+            <Link
+              to="/membership"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-amber-500 hover:text-black text-zinc-300 font-bold border border-zinc-800 transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+              View Plans & Pricing
+            </Link>
+
+            <Link
+              to="/programs"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-amber-500 hover:text-black text-zinc-300 font-bold border border-zinc-800 transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Target className="w-3.5 h-3.5 text-blue-400" />
+              Explore Programs
+            </Link>
+
+            <Link
+              to="/register"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold transition-all flex items-center gap-1 shadow-md shadow-amber-500/20"
+            >
+              Join Now / Register →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* HEADER HERO */}
+      <header className="relative py-16 bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-black border-b border-amber-500/20 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.08)_0,transparent_100%)] pointer-events-none" />
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-extrabold uppercase tracking-widest mb-4">
-            <Dumbbell className="w-4 h-4" /> World-Class Equipment Showcase
+            <Dumbbell className="w-4 h-4" /> World-Class Machinery & Facility
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-white mb-6">
+          <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-white mb-4">
             WORKOUT ROOM & <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent">GYM GALLERY</span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-gray-400 text-base sm:text-lg leading-relaxed">
-            Explore our state-of-the-art strength machinery, cardio deck, leg isolation stations, and free weight training zones uploaded by our coaching staff.
+          <p className="max-w-2xl mx-auto text-gray-400 text-sm sm:text-base leading-relaxed">
+            Explore our state-of-the-art plate-loaded machines, Olympic racks, cardio telemetry deck, and isolation equipment curated by our elite fitness trainers.
           </p>
 
+          {/* Direct Feature Cards */}
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto text-left">
+            <Link
+              to="/trainers"
+              className="p-4 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800/90 border border-zinc-800 hover:border-amber-500/50 transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl group-hover:bg-amber-500 group-hover:text-black transition">
+                  <PhoneCall className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition">Contact Head Trainer</h3>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Schedule a 1-on-1 machine guidance session</p>
+              </div>
+            </Link>
+
+            <Link
+              to="/membership"
+              className="p-4 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800/90 border border-zinc-800 hover:border-amber-500/50 transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-black transition">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition">View Membership Plans</h3>
+                <p className="text-[11px] text-zinc-400 mt-0.5">1, 3, 6, and 12-month VIP subscription tiers</p>
+              </div>
+            </Link>
+
+            <Link
+              to="/programs"
+              className="p-4 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800/90 border border-zinc-800 hover:border-amber-500/50 transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl group-hover:bg-blue-500 group-hover:text-black transition">
+                  <Target className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-amber-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white group-hover:text-blue-300 transition">Explore Fitness Programs</h3>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Weight loss, hypertrophy & strength tracks</p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Category Filter Pills */}
           <div className="mt-10 flex flex-wrap justify-center gap-2">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
                   activeCategory === cat
                     ? "bg-amber-500 text-black shadow-lg shadow-amber-500/25 scale-105"
                     : "bg-zinc-900 text-gray-400 hover:text-white border border-zinc-800 hover:border-amber-500/30"
@@ -243,11 +345,47 @@ export default function Gallery() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* GALLERY GRID */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredImages.map((img) => (
             <ImageCard key={img.id} image={img} />
           ))}
+        </div>
+
+        {/* BOTTOM ACTION PROMO BANNER */}
+        <div className="mt-16 rounded-3xl bg-gradient-to-r from-zinc-900 via-[#18181b] to-zinc-900 border border-amber-500/30 p-8 sm:p-12 text-center relative overflow-hidden shadow-2xl">
+          <div className="absolute -left-12 -top-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl"></div>
+          <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl"></div>
+
+          <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wide text-white">
+              Ready to Train on Legacy Equipment?
+            </h2>
+            <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">
+              Sign up today with your fitness goal, medical history, and flexible membership plan to get immediate access to our facility and personalized daily routines.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <Link
+                to="/register"
+                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+              >
+                Register as Member <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/contact"
+                className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl border border-zinc-700 transition"
+              >
+                Contact Trainer Desk
+              </Link>
+              <Link
+                to="/membership"
+                className="px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-amber-400 font-bold text-xs rounded-xl border border-amber-500/30 transition"
+              >
+                View Membership Plans
+              </Link>
+            </div>
+          </div>
         </div>
       </main>
 

@@ -186,17 +186,49 @@ class UpdateMembershipView(APIView):
                     'end_date': timezone.now().date() + timedelta(days=90)
                 }
             )
+            # Update user fields if provided
+            user_updated = False
             if 'fitness_category' in request.data:
                 user.fitness_category = request.data['fitness_category']
-                user.save()
                 membership.fitness_category = request.data['fitness_category']
+                user_updated = True
+            if 'phone' in request.data:
+                user.phone = request.data['phone']
+                user_updated = True
+            if 'gender' in request.data:
+                user.gender = request.data['gender']
+                user_updated = True
+            if 'address' in request.data:
+                user.address = request.data['address']
+                user_updated = True
+            if 'height' in request.data:
+                user.height = request.data['height']
+                user_updated = True
+            if 'weight' in request.data:
+                user.weight = request.data['weight']
+                user_updated = True
+            if 'has_medical_condition' in request.data:
+                user.has_medical_condition = bool(request.data['has_medical_condition'])
+                user_updated = True
+            if 'medical_condition_reason' in request.data:
+                user.medical_condition_reason = request.data['medical_condition_reason']
+                user_updated = True
+            if 'injuries_surgeries' in request.data:
+                user.injuries_surgeries = request.data['injuries_surgeries']
+                user_updated = True
+            if user_updated:
+                user.save()
 
+            if 'plan_name' in request.data:
+                membership.plan_name = request.data['plan_name']
             if 'plan_title' in request.data:
                 membership.plan_title = request.data['plan_title']
             if 'total_fee' in request.data:
                 membership.total_fee = request.data['total_fee']
             if 'paid_fee' in request.data:
                 membership.paid_fee = request.data['paid_fee']
+            if 'payment_mode' in request.data:
+                membership.payment_mode = request.data['payment_mode']
             if 'status' in request.data:
                 membership.status = request.data['status']
             if 'date_of_joining' in request.data:
@@ -207,7 +239,10 @@ class UpdateMembershipView(APIView):
                 membership.end_date = ed if (ed and str(ed).strip() != "") else None
             
             membership.save()
-            return Response(MembershipSerializer(membership).data)
+            return Response({
+                'membership': MembershipSerializer(membership).data,
+                'user': UserSerializer(user).data
+            })
         except User.DoesNotExist:
             return Response({'error': 'Member not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -452,3 +487,45 @@ class GymGalleryMediaDetailView(APIView):
             return Response({'message': 'Gallery media item deleted successfully'})
         except GymGalleryMedia.DoesNotExist:
             return Response({'error': 'Media item not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# --- Captcha Generation & Verification Views ---
+
+class CaptchaGenerateView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        import string
+        import uuid
+        import hashlib
+        
+        # Generate 6-char alphanumeric captcha string (avoiding confusing chars like 0/O, 1/I)
+        characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        code = ''.join(random.choice(characters) for _ in range(6))
+        
+        # Create hash token with secret salt
+        salt = 'LegacyGym_Captcha_Security_2026'
+        token = hashlib.sha256(f"{code.upper()}:{salt}".encode('utf-8')).hexdigest()
+        
+        return Response({
+            'captcha_code': code,
+            'captcha_token': token,
+            'message': 'Captcha challenge generated'
+        })
+
+    def post(self, request):
+        import hashlib
+        user_input = request.data.get('user_input', '').strip().upper()
+        token = request.data.get('captcha_token', '')
+
+        if not user_input or not token:
+            return Response({'valid': False, 'error': 'Captcha input and token required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        salt = 'LegacyGym_Captcha_Security_2026'
+        expected_token = hashlib.sha256(f"{user_input}:{salt}".encode('utf-8')).hexdigest()
+
+        if token == expected_token:
+            return Response({'valid': True, 'message': 'Captcha verified successfully'})
+        else:
+            return Response({'valid': False, 'error': 'Invalid CAPTCHA code. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+

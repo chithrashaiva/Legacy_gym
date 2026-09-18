@@ -7,21 +7,60 @@ import {
     Edit3, Check, X, Search, ShieldCheck, AlertTriangle,
     Clock, ArrowUpRight, TrendingUp, Sparkles, ChevronRight,
     Image, Video, Upload, Trash2, Plus, KeyRound, Lock, Shield,
-    Bell, FileText, CheckCircle2
+    Bell, FileText, CheckCircle2, HeartPulse, UserPlus, Eye,
+    CreditCard, Activity, Flame, Trophy, MapPin, Scale, Ruler
 } from 'lucide-react';
+
+const FITNESS_GOALS = [
+    { id: 'weight_loss', label: 'Weight Loss' },
+    { id: 'general_fitness', label: 'General Fitness' },
+    { id: 'strength_training', label: 'Strength Training' },
+    { id: 'muscle_gain', label: 'Muscle Gain' },
+    { id: 'body_transformation', label: 'Body Transformation' },
+];
+
+const PLAN_PRESETS = [
+    { id: '1_month', title: '1 Month Starter', days: 30, fee: 1999 },
+    { id: '3_months', title: '3 Months Pro', days: 90, fee: 4999 },
+    { id: '6_months', title: '6 Months Elite', days: 180, fee: 8999 },
+    { id: '12_months', title: '12 Months Annual VIP', days: 365, fee: 15999 },
+];
+
+const PAYMENT_MODES = [
+    { id: 'upi', label: 'UPI' },
+    { id: 'card', label: 'Card' },
+    { id: 'cash', label: 'Cash' },
+    { id: 'bank_transfer', label: 'Bank Transfer' },
+];
 
 export default function AdminPortal() {
     const { user } = useContext(AuthContext);
     const [loading, setLoading] = useState(true);
     const [overview, setOverview] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategoryTab, setSelectedCategoryTab] = useState('all');
 
     // Editing member modal / state
     const [editingMember, setEditingMember] = useState(null);
+    const [viewingMember, setViewingMember] = useState(null);
     const [formMembership, setFormMembership] = useState({
-        plan_title: '',
-        total_fee: '',
-        paid_fee: '',
+        // User fields
+        phone: '',
+        gender: 'M',
+        address: '',
+        height: '',
+        weight: '',
+        has_medical_condition: false,
+        medical_condition_reason: '',
+        injuries_surgeries: '',
+        fitness_category: 'weight_loss',
+
+        // Membership fields
+        plan_name: '3_months',
+        plan_title: '3 Months Pro',
+        total_fee: 4999,
+        paid_fee: 4999,
+        payment_mode: 'upi',
         status: 'active',
         date_of_joining: '',
         end_date: ''
@@ -36,7 +75,7 @@ export default function AdminPortal() {
     });
     const [instructionSuccess, setInstructionSuccess] = useState('');
 
-    // Category Guidance Form State (General Fitness, Weight Loss, Weight Gain)
+    // Category Guidance Form State
     const [guidanceForm, setGuidanceForm] = useState({
         category: 'weight_loss',
         title: 'Thermogenic Fat Loss & Caloric Deficit Protocol',
@@ -58,17 +97,6 @@ export default function AdminPortal() {
     });
     const [mediaSuccess, setMediaSuccess] = useState('');
 
-    // 2-Step Verification Security State
-    const [is2StepVerified, setIs2StepVerified] = useState(() => {
-        return sessionStorage.getItem('admin_2step_verified') === 'true';
-    });
-    const [phoneInput, setPhoneInput] = useState('');
-    const [otpInput, setOtpInput] = useState('');
-    const [otpSent, setOtpSent] = useState(false);
-    const [otpDemoCode, setOtpDemoCode] = useState('');
-    const [otpError, setOtpError] = useState('');
-    const [verifyingOtp, setVerifyingOtp] = useState(false);
-
     useEffect(() => {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -80,44 +108,6 @@ export default function AdminPortal() {
         fetchOverview();
         loadGallery();
     }, []);
-
-    const handleSendOTP = async (e) => {
-        e.preventDefault();
-        setOtpError('');
-        try {
-            const res = await portalService.sendAdminOTP(phoneInput, user?.username || 'admin');
-            setOtpSent(true);
-            setOtpDemoCode(res.otp_demo || '');
-        } catch (err) {
-            setOtpError(err.response?.data?.error || 'Failed to send OTP to mobile phone.');
-        }
-    };
-
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        setOtpError('');
-        setVerifyingOtp(true);
-        try {
-            const res = await portalService.verifyAdminOTP(phoneInput, otpInput);
-            if (res.verified) {
-                sessionStorage.setItem('admin_2step_verified', 'true');
-                setIs2StepVerified(true);
-            } else {
-                setOtpError(res.error || 'Invalid 2-step verification OTP code.');
-            }
-        } catch (err) {
-            setOtpError(err.response?.data?.error || 'Verification failed. Invalid OTP code.');
-        } finally {
-            setVerifyingOtp(false);
-        }
-    };
-
-    const handleLockPortal = () => {
-        sessionStorage.removeItem('admin_2step_verified');
-        setIs2StepVerified(false);
-        setOtpInput('');
-        setOtpSent(false);
-    };
 
     const loadGallery = async () => {
         try {
@@ -179,24 +169,43 @@ export default function AdminPortal() {
     const handleSaveCategoryGuidance = async (e) => {
         e.preventDefault();
         try {
-            const updated = await portalService.saveCategoryGuidance(guidanceForm);
-            setGuidanceSuccess(`Guidance for ${guidanceForm.category.replace('_', ' ').toUpperCase()} updated successfully! Broadcast to members.`);
+            const saved = await portalService.saveCategoryGuidance(guidanceForm);
+            setCategoryGuidanceList(prev => {
+                const idx = prev.findIndex(g => g.category === saved.category);
+                if (idx >= 0) {
+                    const copy = [...prev];
+                    copy[idx] = saved;
+                    return copy;
+                }
+                return [...prev, saved];
+            });
+            setGuidanceSuccess(`Guidance for ${guidanceForm.category.replace('_', ' ')} saved and published to all category members!`);
             setTimeout(() => setGuidanceSuccess(''), 4000);
-            fetchOverview();
         } catch (err) {
-            console.error('Failed to save category guidance', err);
-            alert('Failed to publish category guidance.');
+            console.error('Failed to save guidance', err);
+            alert('Failed to save guidance advice');
         }
     };
 
     const handleEditClick = (member) => {
-        const mem = member.membership || {};
         setEditingMember(member);
+        const mem = member.membership || {};
         setFormMembership({
-            plan_title: mem.plan_title || '3 Months Pro',
+            phone: member.phone || '',
+            gender: member.gender || 'M',
+            address: member.address || '',
+            height: member.height || '',
+            weight: member.weight || '',
+            has_medical_condition: member.has_medical_condition || false,
+            medical_condition_reason: member.medical_condition_reason || '',
+            injuries_surgeries: member.injuries_surgeries || 'None',
             fitness_category: member.fitness_category || mem.fitness_category || 'general_fitness',
-            total_fee: mem.total_fee || '9999.00',
-            paid_fee: mem.paid_fee || '6000.00',
+
+            plan_name: mem.plan_name || '3_months',
+            plan_title: mem.plan_title || '3 Months Pro',
+            total_fee: mem.total_fee || 4999,
+            paid_fee: mem.paid_fee || 4999,
+            payment_mode: mem.payment_mode || 'upi',
             status: mem.status || 'active',
             date_of_joining: mem.date_of_joining || new Date().toISOString().split('T')[0],
             end_date: mem.end_date || ''
@@ -264,7 +273,16 @@ export default function AdminPortal() {
         const query = searchTerm.toLowerCase();
         const fullName = `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase();
         const username = (m.username || '').toLowerCase();
-        return fullName.includes(query) || username.includes(query);
+        const phone = (m.phone || '').toLowerCase();
+        const category = (m.fitness_category_display || m.fitness_category || '').toLowerCase();
+        const plan = (m.membership?.plan_title || '').toLowerCase();
+        const address = (m.address || '').toLowerCase();
+        return fullName.includes(query) || username.includes(query) || phone.includes(query) || category.includes(query) || plan.includes(query) || address.includes(query);
+    });
+
+    const displayedCategoryMembers = filteredMembers.filter(m => {
+        if (selectedCategoryTab === 'all') return true;
+        return (m.fitness_category || '').toLowerCase() === selectedCategoryTab.toLowerCase();
     });
 
     return (
@@ -286,105 +304,34 @@ export default function AdminPortal() {
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {is2StepVerified ? (
-                            <button
-                                onClick={handleLockPortal}
-                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
-                            >
-                                <ShieldCheck className="w-3.5 h-3.5" /> 2-Step Verified Active
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => setIs2StepVerified(false)}
-                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
-                            >
-                                <Lock className="w-3.5 h-3.5" /> Require 2-Step Verification
-                            </button>
-                        )}
-
+                    <div className="flex items-center gap-3">
+                        <Link
+                            to="/register"
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-black font-bold hover:bg-amber-400 shadow transition-colors"
+                        >
+                            <UserPlus className="w-3.5 h-3.5" /> Enroll Member
+                        </Link>
                         <Link
                             to="/dashboard"
                             className="flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 transition-colors"
                         >
                             <ChevronRight className="w-3.5 h-3.5 rotate-180" />
-                            View Member Dashboard
+                            Member View
                         </Link>
                     </div>
                 </div>
             </header>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                
-                {/* 2-Step Verification Modal prompt if not verified */}
-                {!is2StepVerified && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-amber-500 text-black rounded-xl shrink-0 mt-1">
-                                <ShieldCheck className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="text-base font-bold text-white">Admin 2-Step Mobile OTP Verification Required</h3>
-                                <p className="text-xs text-amber-200/80 mt-1 leading-relaxed max-w-xl">
-                                    For high-security operations (financial updates, gallery media uploads), please complete your 2-step phone verification.
-                                </p>
-                            </div>
-                        </div>
-
-                        {!otpSent ? (
-                            <form onSubmit={handleSendOTP} className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <input
-                                    type="tel"
-                                    required
-                                    placeholder="Enter Phone Number (+91...)"
-                                    value={phoneInput}
-                                    onChange={e => setPhoneInput(e.target.value)}
-                                    className="px-3.5 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
-                                />
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl shadow shrink-0 whitespace-nowrap"
-                                >
-                                    Send Mobile OTP
-                                </button>
-                            </form>
-                        ) : (
-                            <form onSubmit={handleVerifyOtp} className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                {otpDemoCode && (
-                                    <span className="text-[10px] text-amber-300 font-mono bg-zinc-900 border border-amber-500/30 px-2 py-1 rounded flex items-center">
-                                        Demo OTP: <strong className="text-white ml-1">{otpDemoCode}</strong>
-                                    </span>
-                                )}
-                                <input
-                                    type="text"
-                                    maxLength={6}
-                                    required
-                                    placeholder="6-Digit OTP"
-                                    value={otpInput}
-                                    onChange={e => setOtpInput(e.target.value)}
-                                    className="px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-100 font-mono text-center focus:outline-none focus:border-amber-500 w-32"
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={verifyingOtp}
-                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl shadow shrink-0 whitespace-nowrap"
-                                >
-                                    {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
-                                </button>
-                            </form>
-                        )}
-                        {otpError && <p className="text-xs text-red-400 w-full text-right">{otpError}</p>}
-                    </div>
-                )}
 
                 {/* EXPIRED MEMBERSHIPS NOTIFICATION BANNER FOR ADMIN */}
                 {expiredAlerts.length > 0 && (
-                    <div className="bg-red-950/40 border border-red-600/60 rounded-2xl p-5 space-y-3">
+                    <div className="bg-red-950/40 border border-red-600/60 rounded-2xl p-5 space-y-3 shadow-lg">
                         <div className="flex items-center gap-2 text-red-400 font-extrabold text-sm uppercase tracking-wider">
                             <AlertTriangle className="w-5 h-5 text-red-500" />
                             Expired Membership Alerts ({expiredAlerts.length} Action Required)
                         </div>
-                        <p className="text-xs text-zinc-300">The following members have expired plans. Automated alerts have been pushed to their member dashboards:</p>
+                        <p className="text-xs text-zinc-300">The following members have expired plans. Automated renewal notifications are displayed on their member dashboards:</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             {expiredAlerts.map((exp, i) => (
                                 <div key={i} className="p-3 bg-zinc-900/80 border border-red-900/50 rounded-xl space-y-1 text-xs">
@@ -399,10 +346,10 @@ export default function AdminPortal() {
 
                 {/* 1. KPI Overview Stats Bar */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden shadow">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Members</p>
+                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Registered Members</p>
                                 <h3 className="text-3xl font-black text-white mt-1">{metrics.total_members}</h3>
                             </div>
                             <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
@@ -411,11 +358,11 @@ export default function AdminPortal() {
                         </div>
                         <div className="mt-3 text-xs text-zinc-400 flex items-center gap-1">
                             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400 font-semibold">+8%</span> this month
+                            <span className="text-emerald-400 font-semibold">Active Roster</span>
                         </div>
                     </div>
 
-                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden shadow">
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Revenue</p>
@@ -428,7 +375,7 @@ export default function AdminPortal() {
                         <div className="mt-3 text-xs text-zinc-400">Collected fees year-to-date</div>
                     </div>
 
-                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden shadow">
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Pending Balances</p>
@@ -438,10 +385,10 @@ export default function AdminPortal() {
                                 <AlertTriangle className="w-5 h-5" />
                             </div>
                         </div>
-                        <div className="mt-3 text-xs text-red-400/80 font-medium">Pending collection at desk</div>
+                        <div className="mt-3 text-xs text-red-400/80 font-medium">Pending desk collections</div>
                     </div>
 
-                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden">
+                    <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-5 relative overflow-hidden shadow">
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Upcoming Expirations</p>
@@ -451,292 +398,459 @@ export default function AdminPortal() {
                                 <Clock className="w-5 h-5" />
                             </div>
                         </div>
-                        <div className="mt-3 text-xs text-amber-300/80 font-medium">Renewal alerts in next 14 days</div>
+                        <div className="mt-3 text-xs text-amber-400/80">Next 14 days</div>
                     </div>
                 </div>
 
-                {/* 2. CATEGORY SPECIFIC GUIDANCE MANAGER (General Fitness, Weight Loss, Weight Gain) */}
-                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-6">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-amber-400" />
+                {/* 2. Client Roster & Membership Data Management */}
+                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-xl">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-lg font-bold text-white">Publish Categorized Trainer Guidance</h2>
-                            <p className="text-xs text-zinc-400">Provide separate specialized advice for members under General Fitness, Weight Loss, and Weight Gain.</p>
+                            <h2 className="text-xl font-black text-white flex items-center gap-2">
+                                <Users className="w-6 h-6 text-amber-500" />
+                                All Members & Category-wise Roster
+                            </h2>
+                            <p className="text-xs text-zinc-400 mt-1">
+                                Complete information displayed in rows & columns for every fitness category (General Fitness, Strength Training, Weight Loss, Muscle Gain, Body Transformation).
+                            </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="relative">
+                                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
+                                <input
+                                    type="text"
+                                    placeholder="Search name, phone, email, goal..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="pl-9 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500 w-full sm:w-64"
+                                />
+                            </div>
+                            <Link
+                                to="/register"
+                                className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-extrabold rounded-xl flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all"
+                            >
+                                <Plus className="w-4 h-4" /> Enroll New Member
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Category Filter Tabs & Member Counts */}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-800/80">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedCategoryTab('all')}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                selectedCategoryTab === 'all'
+                                    ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
+                                    : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            }`}
+                        >
+                            <span>All Members</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${selectedCategoryTab === 'all' ? 'bg-black text-amber-400' : 'bg-zinc-800 text-zinc-300'}`}>
+                                {members.length}
+                            </span>
+                        </button>
+
+                        {FITNESS_GOALS.map((cat) => {
+                            const count = members.filter(m => (m.fitness_category || '').toLowerCase() === cat.id.toLowerCase()).length;
+                            const isSelected = selectedCategoryTab === cat.id;
+                            return (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => setSelectedCategoryTab(cat.id)}
+                                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                        isSelected
+                                            ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
+                                            : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                    }`}
+                                >
+                                    <span>{cat.label}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${isSelected ? 'bg-black text-amber-400' : 'bg-zinc-800 text-zinc-300'}`}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Table View */}
+                    <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-[#0d0e10]">
+                        <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr className="bg-zinc-900/90 border-b border-zinc-800 text-zinc-400 uppercase tracking-wider font-bold text-[11px]">
+                                    <th className="py-3.5 px-4"># Member Details</th>
+                                    <th className="py-3.5 px-4">Category / Goal</th>
+                                    <th className="py-3.5 px-4">Contact (Phone & Email)</th>
+                                    <th className="py-3.5 px-4">Metrics & Gender</th>
+                                    <th className="py-3.5 px-4">Address</th>
+                                    <th className="py-3.5 px-4">Medical Record</th>
+                                    <th className="py-3.5 px-4">Plan & Duration</th>
+                                    <th className="py-3.5 px-4">Joining & End Date</th>
+                                    <th className="py-3.5 px-4">Payment</th>
+                                    <th className="py-3.5 px-4">Fees & Balance</th>
+                                    <th className="py-3.5 px-4">Status</th>
+                                    <th className="py-3.5 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800/60">
+                                {displayedCategoryMembers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={12} className="py-12 text-center text-zinc-500">
+                                            No members found matching the selected category or search filter.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    displayedCategoryMembers.map((member, index) => {
+                                        const mem = member.membership || {};
+                                        const balance = parseFloat(mem.balance_due || 0);
+                                        const isMemExpired = mem.status === 'expired' || (mem.end_date && new Date(mem.end_date) < new Date());
+                                        const hasMed = member.has_medical_condition;
+
+                                        // Category badge color
+                                        const getCategoryBadgeClass = (cat) => {
+                                            switch (cat) {
+                                                case 'weight_loss': return 'bg-orange-500/15 text-orange-400 border-orange-500/30';
+                                                case 'general_fitness': return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
+                                                case 'strength_training': return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+                                                case 'muscle_gain': return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+                                                case 'body_transformation': return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+                                                default: return 'bg-zinc-800 text-zinc-300 border-zinc-700';
+                                            }
+                                        };
+
+                                        return (
+                                            <tr key={member.id} className="hover:bg-zinc-900/50 transition-colors">
+                                                {/* Col 1: Member Info */}
+                                                <td className="py-3.5 px-4 font-bold text-white whitespace-nowrap">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-600/30 border border-amber-500/30 flex items-center justify-center font-extrabold text-amber-400 text-xs shrink-0">
+                                                            {(member.first_name ? member.first_name[0] : member.username[0]).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-white text-xs font-bold leading-tight">
+                                                                {member.first_name ? `${member.first_name} ${member.last_name || ''}` : member.username}
+                                                            </div>
+                                                            <div className="text-[11px] font-mono text-zinc-400">
+                                                                @{member.username}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Col 2: Category / Fitness Goal */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border uppercase tracking-wider ${getCategoryBadgeClass(member.fitness_category)}`}>
+                                                        {member.fitness_category_display || member.fitness_category?.replace('_', ' ') || 'General Fitness'}
+                                                    </span>
+                                                </td>
+
+                                                {/* Col 3: Contact */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <div className="font-mono text-zinc-200 text-xs font-semibold">{member.phone || '—'}</div>
+                                                    <div className="text-[11px] text-zinc-500">{member.email || '—'}</div>
+                                                </td>
+
+                                                {/* Col 4: Metrics & Gender */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <div className="text-zinc-200 font-semibold text-xs">
+                                                        {member.gender_display || member.gender || '—'}
+                                                        {member.date_of_birth && ` • ${member.date_of_birth}`}
+                                                    </div>
+                                                    <div className="text-[11px] text-zinc-400 font-mono">
+                                                        H: {member.height || '—'} | W: {member.weight || '—'}
+                                                    </div>
+                                                </td>
+
+                                                {/* Col 5: Address */}
+                                                <td className="py-3.5 px-4 max-w-xs">
+                                                    <div className="text-zinc-300 text-xs line-clamp-2" title={member.address}>
+                                                        {member.address || '—'}
+                                                    </div>
+                                                </td>
+
+                                                {/* Col 6: Medical Record */}
+                                                <td className="py-3.5 px-4">
+                                                    {hasMed ? (
+                                                        <div className="space-y-1">
+                                                            <span
+                                                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/40 inline-flex items-center gap-1 cursor-pointer"
+                                                                title={member.medical_condition_reason || 'Medical Condition Recorded'}
+                                                                onClick={() => setViewingMember(member)}
+                                                            >
+                                                                <HeartPulse className="w-3 h-3 text-red-400" /> Condition Alert
+                                                            </span>
+                                                            {member.medical_condition_reason && (
+                                                                <div className="text-[10px] text-red-300 max-w-xs truncate" title={member.medical_condition_reason}>
+                                                                    {member.medical_condition_reason}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                            ✓ Clear & Fit
+                                                        </span>
+                                                    )}
+                                                    {member.injuries_surgeries && member.injuries_surgeries.toLowerCase() !== 'none' && (
+                                                        <div className="text-[10px] text-zinc-500 max-w-xs truncate mt-0.5" title={`Injuries: ${member.injuries_surgeries}`}>
+                                                            Inj: {member.injuries_surgeries}
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* Col 7: Plan & Duration */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <div className="font-bold text-white text-xs">{mem.plan_title || '3 Months Pro'}</div>
+                                                    <div className="text-[10px] text-zinc-400 font-mono">
+                                                        Duration: {mem.plan_name?.replace('_', ' ').toUpperCase() || '3 MONTHS'}
+                                                    </div>
+                                                </td>
+
+                                                {/* Col 8: Joining & End Date */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap font-mono text-xs">
+                                                    <div className="text-zinc-300">{mem.date_of_joining || '—'}</div>
+                                                    <div className={`text-[11px] ${isMemExpired ? 'text-red-400 font-bold' : 'text-zinc-500'}`}>
+                                                        Exp: {mem.end_date || '—'}
+                                                    </div>
+                                                </td>
+
+                                                {/* Col 9: Payment Mode */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-zinc-800 text-amber-300 border border-zinc-700">
+                                                        {mem.payment_mode || 'UPI'}
+                                                    </span>
+                                                </td>
+
+                                                {/* Col 10: Fees & Balance */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap font-mono">
+                                                    <div className="text-zinc-300 text-xs">Total: ₹{parseFloat(mem.total_fee || 0).toLocaleString()}</div>
+                                                    <div className="text-emerald-400 text-[11px] font-semibold">Paid: ₹{parseFloat(mem.paid_fee || 0).toLocaleString()}</div>
+                                                    <div className={`text-[11px] font-bold ${balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                        Bal: ₹{balance.toLocaleString()}
+                                                    </div>
+                                                </td>
+
+                                                {/* Col 11: Status */}
+                                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+                                                        isMemExpired
+                                                            ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                                                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                    }`}>
+                                                        {isMemExpired ? 'Expired' : (mem.status || 'Active')}
+                                                    </span>
+                                                </td>
+
+                                                {/* Col 12: Actions */}
+                                                <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <button
+                                                            onClick={() => setViewingMember(member)}
+                                                            className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition"
+                                                            title="Inspect Full Sheet"
+                                                        >
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleEditClick(member)}
+                                                            className="px-2.5 py-1.5 bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 font-bold rounded-lg transition inline-flex items-center gap-1 text-[11px]"
+                                                        >
+                                                            <Edit3 className="w-3 h-3" /> Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteMember(member.id, member.first_name ? `${member.first_name} ${member.last_name || ''}` : member.username)}
+                                                            className="p-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 rounded-lg transition"
+                                                            title="Remove Client"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* 3. Category Specific Guidance Protocol Section */}
+                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                        <div>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-amber-500" />
+                                Broadcast Guidance Protocols by Fitness Goal
+                            </h2>
+                            <p className="text-xs text-zinc-400">
+                                Send category-wide guidelines for Weight Loss, General Fitness, Strength Training, Muscle Gain, or Body Transformation.
+                            </p>
                         </div>
                     </div>
 
                     {guidanceSuccess && (
-                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
+                        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4" /> {guidanceSuccess}
                         </div>
                     )}
 
-                    <form onSubmit={handleSaveCategoryGuidance} className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-xl space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <form onSubmit={handleSaveCategoryGuidance} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Target Category</label>
+                                <label className="block font-semibold text-zinc-300 mb-1">Target Fitness Goal</label>
                                 <select
                                     value={guidanceForm.category}
                                     onChange={e => setGuidanceForm({ ...guidanceForm, category: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
+                                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-amber-400 font-bold focus:border-amber-500 outline-none"
                                 >
-                                    <option value="general_fitness">General Fitness</option>
-                                    <option value="weight_loss">Weight Loss</option>
-                                    <option value="weight_gain">Weight Gain</option>
+                                    {FITNESS_GOALS.map(g => (
+                                        <option key={g.id} value={g.id}>{g.label}</option>
+                                    ))}
                                 </select>
                             </div>
 
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Guidance Headline / Title</label>
+                            <div>
+                                <label className="block font-semibold text-zinc-300 mb-1">Guidance Directive Title</label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g. Thermogenic Fat Loss Protocol"
                                     value={guidanceForm.title}
                                     onChange={e => setGuidanceForm({ ...guidanceForm, title: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
+                                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-zinc-400 mb-1">Detailed Guidance & Advice Text</label>
+                            <label className="block font-semibold text-zinc-300 mb-1">Guidance Protocol Text & Training / Nutrition Advice</label>
                             <textarea
-                                rows={3}
                                 required
-                                placeholder="Detail macronutrient timing, calorie deficit/surplus, training intensity, and sleep recovery advice for this category..."
+                                rows={3}
                                 value={guidanceForm.guidance_text}
                                 onChange={e => setGuidanceForm({ ...guidanceForm, guidance_text: e.target.value })}
-                                className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
+                                className="w-full px-3.5 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
                             />
                         </div>
 
-                        <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20"
-                            >
-                                <Send className="w-3.5 h-3.5" /> Publish Guidance to Members
-                            </button>
-                        </div>
-                    </form>
-
-                    {/* Active Category Guidance Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {categoryGuidanceList.map((g, i) => (
-                            <div key={i} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                                        {g.category.replace('_', ' ')}
-                                    </span>
-                                </div>
-                                <h4 className="text-xs font-bold text-white">{g.title}</h4>
-                                <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-3">{g.guidance_text}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 3. Instruction Scheduling (1-Day in Advance with notifications) */}
-                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Send className="w-5 h-5 text-amber-400" />
-                        <div>
-                            <h2 className="text-lg font-bold text-white">Schedule Trainer Instructions (1-Day Advance)</h2>
-                            <p className="text-xs text-zinc-400">Post notifications and special workout or nutrition guidelines directly to members’ dashboards.</p>
-                        </div>
-                    </div>
-
-                    {instructionSuccess && (
-                        <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-                            <Check className="w-4 h-4" /> {instructionSuccess}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSendInstruction} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Instruction Title / Subject</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Tomorrow: High-Octane Leg Blast & Hydration Advisory"
-                                    value={instructionForm.title}
-                                    onChange={e => setInstructionForm({ ...instructionForm, title: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Scheduled Date (Advance Target)</label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={instructionForm.scheduled_for_date}
-                                    onChange={e => setInstructionForm({ ...instructionForm, scheduled_for_date: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-zinc-400 mb-1">Detailed Instruction Text</label>
-                            <textarea
-                                rows={3}
-                                required
-                                placeholder="Detail the equipment preparation, warm-up mobility routine, hydration targets, or nutrition timing..."
-                                value={instructionForm.instruction_text}
-                                onChange={e => setInstructionForm({ ...instructionForm, instruction_text: e.target.value })}
-                                className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2">
-                            <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={instructionForm.is_advance}
-                                    onChange={e => setInstructionForm({ ...instructionForm, is_advance: e.target.checked })}
-                                    className="rounded border-zinc-700 text-amber-500 focus:ring-0"
-                                />
-                                Highlight as Priority Next-Day Advance Notice
-                            </label>
-
-                            <button
-                                type="submit"
-                                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs tracking-wide shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
-                            >
-                                <Send className="w-3.5 h-3.5" />
-                                Broadcast Instruction to Clients
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl shadow-lg shadow-amber-500/20"
+                        >
+                            Publish Guidance Protocol
+                        </button>
                     </form>
                 </div>
 
-                {/* 4. Workout Room & Gym Gallery Management (Photos & Videos) */}
-                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                            <Image className="w-5 h-5 text-amber-400" />
-                            <div>
-                                <h2 className="text-lg font-bold text-white">Workout Room & Gym Gallery Manager</h2>
-                                <p className="text-xs text-zinc-400">Add, review, and manage photos & video links of the workout room, equipment, and training zones.</p>
-                            </div>
+                {/* 4. Workout Room & Equipment Gallery Media Management */}
+                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-xl">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                        <div>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Image className="w-5 h-5 text-amber-500" />
+                                Workout Room & Equipment Media Gallery
+                            </h2>
+                            <p className="text-xs text-zinc-400">
+                                Upload and curate equipment photos and workout demonstration videos displayed on the public Gallery page.
+                            </p>
                         </div>
-                        <span className="text-xs px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg font-semibold">
-                            {galleryItems.length} Media Items Live
-                        </span>
                     </div>
 
                     {mediaSuccess && (
-                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-                            <Check className="w-4 h-4" /> {mediaSuccess}
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" /> {mediaSuccess}
                         </div>
                     )}
 
-                    {/* Upload / Add Form */}
-                    <form onSubmit={handleAddMedia} className="p-5 bg-zinc-900/60 border border-zinc-800/80 rounded-xl space-y-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                            <Plus className="w-3.5 h-3.5" /> Add New Photo or Video
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Title / Caption</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Free Weights & Dumbbell Rack Area"
-                                    value={mediaForm.title}
-                                    onChange={e => setMediaForm({ ...mediaForm, title: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Media Type</label>
-                                <select
-                                    value={mediaForm.media_type}
-                                    onChange={e => setMediaForm({ ...mediaForm, media_type: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
-                                >
-                                    <option value="photo">Photo (Image)</option>
-                                    <option value="video">Video (MP4 / Web Video / YouTube)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Gallery Category</label>
-                                <select
-                                    value={mediaForm.category}
-                                    onChange={e => setMediaForm({ ...mediaForm, category: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
-                                >
-                                    <option value="Workout Room">Workout Room / Floor</option>
-                                    <option value="Leg Equipment">Leg Equipment</option>
-                                    <option value="Cardio Zone">Cardio Zone</option>
-                                    <option value="Upper Body">Upper Body</option>
-                                    <option value="CrossFit & Functional">CrossFit & Functional</option>
-                                    <option value="General">General Gym Lounge</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">
-                                    Media Image/Video URL or Asset Path
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="https://... or /gallery/my_workout_room.jpg"
-                                    value={mediaForm.media_url}
-                                    onChange={e => setMediaForm({ ...mediaForm, media_url: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-zinc-400 mb-1">Tag / Subheading</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Strength Training, Cardio, HIIT"
-                                    value={mediaForm.tag}
-                                    onChange={e => setMediaForm({ ...mediaForm, tag: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
-                                />
-                            </div>
-                        </div>
-
+                    <form onSubmit={handleAddMedia} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                         <div>
-                            <label className="block text-xs font-semibold text-zinc-400 mb-1">Description</label>
-                            <textarea
-                                rows={2}
-                                placeholder="Describe the equipment, zone features, or training purpose..."
-                                value={mediaForm.description}
-                                onChange={e => setMediaForm({ ...mediaForm, description: e.target.value })}
-                                className="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-zinc-100 focus:border-amber-500 outline-none"
+                            <label className="block font-semibold text-zinc-400 mb-1">Media Title *</label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="e.g. Olympic Squat Rack Station"
+                                value={mediaForm.title}
+                                onChange={e => setMediaForm({ ...mediaForm, title: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
                             />
                         </div>
 
-                        <div className="flex justify-end">
+                        <div>
+                            <label className="block font-semibold text-zinc-400 mb-1">Category</label>
+                            <select
+                                value={mediaForm.category}
+                                onChange={e => setMediaForm({ ...mediaForm, category: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                            >
+                                <option value="Workout Room">Workout Room</option>
+                                <option value="Leg Equipment">Leg Equipment</option>
+                                <option value="Cardio Zone">Cardio Zone</option>
+                                <option value="Upper Body">Upper Body</option>
+                                <option value="CrossFit & Functional">CrossFit & Functional</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block font-semibold text-zinc-400 mb-1">Media Type</label>
+                            <select
+                                value={mediaForm.media_type}
+                                onChange={e => setMediaForm({ ...mediaForm, media_type: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                            >
+                                <option value="photo">Photo (Image URL)</option>
+                                <option value="video">Video (Stream URL)</option>
+                            </select>
+                        </div>
+
+                        <div className="lg:col-span-2">
+                            <label className="block font-semibold text-zinc-400 mb-1">Media URL (Web link or local path) *</label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="https://... or /gallery/image.jpg"
+                                value={mediaForm.media_url}
+                                onChange={e => setMediaForm({ ...mediaForm, media_url: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block font-semibold text-zinc-400 mb-1">Highlight Tag</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Strength Isolation"
+                                value={mediaForm.tag}
+                                onChange={e => setMediaForm({ ...mediaForm, tag: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                            />
+                        </div>
+
+                        <div className="sm:col-span-2 lg:col-span-3">
+                            <label className="block font-semibold text-zinc-400 mb-1">Description / Machine Specifications</label>
+                            <textarea
+                                rows={2}
+                                placeholder="Details about muscle targeted, machine ergonomics, features..."
+                                value={mediaForm.description}
+                                onChange={e => setMediaForm({ ...mediaForm, description: e.target.value })}
+                                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                            />
+                        </div>
+
+                        <div className="sm:col-span-2 lg:col-span-3">
                             <button
                                 type="submit"
-                                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                                className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl shadow-md"
                             >
-                                <Upload className="w-3.5 h-3.5" /> Add to Public Gallery
+                                Add Media to Gallery
                             </button>
                         </div>
                     </form>
 
-                    {/* Live Gallery Media Cards */}
-                    <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Current Gallery Media</h4>
-                        
+                    {/* Gallery Items Grid */}
+                    <div className="pt-4 border-t border-zinc-800">
                         {galleryItems.length === 0 ? (
-                            <div className="p-8 text-center text-zinc-500 text-xs border border-zinc-800/80 rounded-xl">
-                                No custom photos or videos added yet. Default showroom media is active on the main Gallery page.
-                            </div>
+                            <p className="text-xs text-zinc-500">No custom gallery items uploaded yet.</p>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {galleryItems.map(item => (
@@ -791,115 +905,176 @@ export default function AdminPortal() {
                     </div>
                 </div>
 
-                {/* 5. Client Data Management (Roster & Fees Update) */}
-                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* 5. Direct Trainer Instruction Scheduler */}
+                <div className="bg-[#111215] border border-zinc-800 rounded-2xl p-6 space-y-4 shadow-xl">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                         <div>
-                            <h2 className="text-lg font-bold text-white">Client Data & Membership Management</h2>
-                            <p className="text-xs text-zinc-400">View active athletes, edit subscription plans, record payments, and track balances due.</p>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Send className="w-5 h-5 text-amber-500" />
+                                Advance Trainer Instructions & Routine Broadcast
+                            </h2>
+                            <p className="text-xs text-zinc-400">Push advance instructions scheduled for tomorrow or specific dates directly into members' dashboards.</p>
+                        </div>
+                    </div>
+
+                    {instructionSuccess && (
+                        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" /> {instructionSuccess}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSendInstruction} className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block font-semibold text-zinc-300 mb-1">Instruction Title</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. Leg Day Warmup & Progressive Overload Protocol"
+                                    value={instructionForm.title}
+                                    onChange={e => setInstructionForm({ ...instructionForm, title: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-zinc-300 mb-1">Scheduled Date</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={instructionForm.scheduled_for_date}
+                                    onChange={e => setInstructionForm({ ...instructionForm, scheduled_for_date: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
+                                />
+                            </div>
                         </div>
 
-                        <div className="relative">
-                            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3" />
-                            <input
-                                type="text"
-                                placeholder="Search member name..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:border-amber-500 w-full sm:w-64"
+                        <div>
+                            <label className="block font-semibold text-zinc-300 mb-1">Instruction Details</label>
+                            <textarea
+                                required
+                                rows={3}
+                                placeholder="Enter specific instructions (e.g. hydrate with 1L water, perform 10 mins dynamic stretching, avoid maxing out on squats without spotter)..."
+                                value={instructionForm.instruction_text}
+                                onChange={e => setInstructionForm({ ...instructionForm, instruction_text: e.target.value })}
+                                className="w-full px-3.5 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none"
                             />
                         </div>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr className="border-b border-zinc-800 text-zinc-400 uppercase tracking-wider font-semibold">
-                                    <th className="py-3 px-4">Member Name</th>
-                                    <th className="py-3 px-4">Plan Chosen</th>
-                                    <th className="py-3 px-4">Join Date</th>
-                                    <th className="py-3 px-4">Total Fee</th>
-                                    <th className="py-3 px-4">Paid Fee</th>
-                                    <th className="py-3 px-4">Balance Due</th>
-                                    <th className="py-3 px-4">Status</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-800/60">
-                                {filteredMembers.map((member) => {
-                                    const mem = member.membership || {};
-                                    const balance = parseFloat(mem.balance_due || 0);
-                                    const isMemExpired = mem.status === 'expired' || (mem.end_date && new Date(mem.end_date) < new Date());
-                                    return (
-                                        <tr key={member.id} className="hover:bg-zinc-900/40 transition-colors">
-                                            <td className="py-3.5 px-4 font-bold text-white">
-                                                {member.first_name ? `${member.first_name} ${member.last_name || ''}` : member.username}
-                                                <div className="text-[11px] font-normal text-zinc-400 font-mono">
-                                                    {member.phone || member.email || `@${member.username}`}
-                                                </div>
-                                            </td>
-                                            <td className="py-3.5 px-4 text-zinc-300">
-                                                {mem.plan_title || '3 Months Pro'}
-                                            </td>
-                                            <td className="py-3.5 px-4 font-mono text-zinc-400">
-                                                {mem.date_of_joining || '—'}
-                                            </td>
-                                            <td className="py-3.5 px-4 font-mono text-zinc-200">
-                                                ₹{parseFloat(mem.total_fee || 0).toLocaleString()}
-                                            </td>
-                                            <td className="py-3.5 px-4 font-mono text-emerald-400 font-semibold">
-                                                ₹{parseFloat(mem.paid_fee || 0).toLocaleString()}
-                                            </td>
-                                            <td className="py-3.5 px-4 font-mono font-bold">
-                                                <span className={`px-2 py-0.5 rounded ${balance > 0 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'text-emerald-400'}`}>
-                                                    ₹{balance.toLocaleString()}
-                                                </span>
-                                            </td>
-                                            <td className="py-3.5 px-4">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                                                    isMemExpired
-                                                        ? 'bg-red-500/20 text-red-400 border border-red-500/40 font-bold'
-                                                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                }`}>
-                                                    {isMemExpired ? 'Expired' : (mem.status || 'Active')}
-                                                </span>
-                                            </td>
-                                            <td className="py-3.5 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => handleEditClick(member)}
-                                                        className="px-3 py-1.5 bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 font-medium rounded-lg transition-colors inline-flex items-center gap-1.5"
-                                                    >
-                                                        <Edit3 className="w-3 h-3" /> Edit Data
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteMember(member.id, member.first_name ? `${member.first_name} ${member.last_name || ''}` : member.username)}
-                                                        className="px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 rounded-lg transition-colors inline-flex items-center gap-1"
-                                                        title="Remove Client"
-                                                    >
-                                                        <Trash2 className="w-3 h-3" /> Remove
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                        <button
+                            type="submit"
+                            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-xl shadow-md"
+                        >
+                            Broadcast Instruction
+                        </button>
+                    </form>
                 </div>
 
-                {/* 6. Edit Member Data Modal */}
+                {/* MODAL 1: VIEW FULL MEMBER HEALTH & PROFILE SHEET */}
+                {viewingMember && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
+                        <div className="bg-[#141518] border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl relative">
+                            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                                <div>
+                                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                        <Users className="w-4 h-4 text-amber-500" />
+                                        {viewingMember.first_name ? `${viewingMember.first_name} ${viewingMember.last_name || ''}` : viewingMember.username}
+                                    </h3>
+                                    <p className="text-xs text-amber-400 font-mono">@{viewingMember.username}</p>
+                                </div>
+                                <button
+                                    onClick={() => setViewingMember(null)}
+                                    className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 text-xs">
+                                {/* Personal info card */}
+                                <div className="p-3.5 bg-zinc-900/90 rounded-xl border border-zinc-800 space-y-2">
+                                    <div className="font-bold text-amber-400 uppercase tracking-wider text-[11px]">Personal Metrics</div>
+                                    <div className="grid grid-cols-2 gap-2 text-zinc-300">
+                                        <div>Gender: <strong className="text-white">{viewingMember.gender_display || viewingMember.gender || '—'}</strong></div>
+                                        <div>DOB: <strong className="text-white">{viewingMember.date_of_birth || '—'}</strong></div>
+                                        <div>Height: <strong className="text-white">{viewingMember.height || '—'}</strong></div>
+                                        <div>Weight: <strong className="text-white">{viewingMember.weight || '—'}</strong></div>
+                                        <div>Phone: <strong className="text-white font-mono">{viewingMember.phone || '—'}</strong></div>
+                                        <div>Email: <strong className="text-white">{viewingMember.email || '—'}</strong></div>
+                                    </div>
+                                    {viewingMember.address && (
+                                        <div className="pt-1 text-zinc-400 border-t border-zinc-800/80">
+                                            Address: <span className="text-zinc-200">{viewingMember.address}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Health & Medical record */}
+                                <div className="p-3.5 bg-zinc-900/90 rounded-xl border border-zinc-800 space-y-2">
+                                    <div className="font-bold text-red-400 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                        <HeartPulse className="w-3.5 h-3.5" /> Health & Medical Condition Record
+                                    </div>
+                                    <div>
+                                        Has Medical Condition: <strong className={viewingMember.has_medical_condition ? 'text-red-400' : 'text-emerald-400'}>
+                                            {viewingMember.has_medical_condition ? 'YES' : 'NO'}
+                                        </strong>
+                                    </div>
+                                    {viewingMember.has_medical_condition && (
+                                        <div className="p-2.5 bg-red-950/40 border border-red-900/60 rounded-lg text-red-300">
+                                            <strong>Condition Details / Reason:</strong> {viewingMember.medical_condition_reason || 'Not specified'}
+                                        </div>
+                                    )}
+                                    <div className="text-zinc-400">
+                                        Injuries / Surgeries History: <span className="text-zinc-200">{viewingMember.injuries_surgeries || 'None'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Membership & Goal */}
+                                <div className="p-3.5 bg-zinc-900/90 rounded-xl border border-zinc-800 space-y-2">
+                                    <div className="font-bold text-amber-400 uppercase tracking-wider text-[11px]">Membership & Payment</div>
+                                    <div className="grid grid-cols-2 gap-2 text-zinc-300">
+                                        <div>Goal: <strong className="text-amber-400">{viewingMember.fitness_category_display || viewingMember.fitness_category}</strong></div>
+                                        <div>Plan: <strong className="text-white">{viewingMember.membership?.plan_title || '—'}</strong></div>
+                                        <div>Joining: <strong className="text-white">{viewingMember.membership?.date_of_joining || '—'}</strong></div>
+                                        <div>End Date: <strong className="text-white">{viewingMember.membership?.end_date || '—'}</strong></div>
+                                        <div>Mode: <strong className="text-white uppercase">{viewingMember.membership?.payment_mode || 'UPI'}</strong></div>
+                                        <div>Status: <strong className="text-emerald-400 uppercase">{viewingMember.membership?.status || 'Active'}</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+                                <button
+                                    onClick={() => {
+                                        const m = viewingMember;
+                                        setViewingMember(null);
+                                        handleEditClick(m);
+                                    }}
+                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl text-xs flex items-center gap-1.5"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5" /> Edit Member Data
+                                </button>
+                                <button
+                                    onClick={() => setViewingMember(null)}
+                                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl text-xs"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL 2: EDIT MEMBER DATA MODAL */}
                 {editingMember && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                        <div className="bg-[#141518] border border-zinc-800 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl relative">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto">
+                        <div className="bg-[#141518] border border-zinc-800 rounded-2xl w-full max-w-xl p-6 space-y-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                             <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
                                 <div>
                                     <h3 className="text-base font-bold text-white">
-                                        Edit Client Membership
+                                        Edit Client Information & Membership
                                     </h3>
                                     <p className="text-xs text-amber-500 font-medium">
-                                        {editingMember.first_name || editingMember.username}
+                                        {editingMember.first_name || editingMember.username} (@{editingMember.username})
                                     </p>
                                 </div>
                                 <button
@@ -911,78 +1086,224 @@ export default function AdminPortal() {
                             </div>
 
                             <form onSubmit={handleSaveMembership} className="space-y-4 text-xs">
-                                <div>
-                                    <label className="block font-semibold text-zinc-400 mb-1">Membership Plan Title</label>
-                                    <input
-                                        type="text"
-                                        value={formMembership.plan_title}
-                                        onChange={e => setFormMembership({ ...formMembership, plan_title: e.target.value })}
-                                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
-                                    />
-                                </div>
+                                
+                                {/* Section: Personal & Health Info */}
+                                <div className="p-3.5 bg-zinc-900 rounded-xl border border-zinc-800 space-y-3">
+                                    <div className="font-bold text-amber-400 uppercase tracking-wide text-[11px]">1. Profile & Health Records</div>
+                                    
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Phone Number</label>
+                                            <input
+                                                type="text"
+                                                value={formMembership.phone}
+                                                onChange={e => setFormMembership({ ...formMembership, phone: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Gender</label>
+                                            <select
+                                                value={formMembership.gender}
+                                                onChange={e => setFormMembership({ ...formMembership, gender: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            >
+                                                <option value="M">Male</option>
+                                                <option value="F">Female</option>
+                                                <option value="O">Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-amber-400 mb-1 font-bold">Fitness Goal</label>
+                                            <select
+                                                value={formMembership.fitness_category}
+                                                onChange={e => setFormMembership({ ...formMembership, fitness_category: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-amber-500/40 rounded-lg text-amber-300 font-bold focus:border-amber-500 outline-none"
+                                            >
+                                                {FITNESS_GOALS.map(g => (
+                                                    <option key={g.id} value={g.id}>{g.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
 
-                                <div>
-                                    <label className="block font-semibold text-amber-400 mb-1 font-bold">Assigned Fitness Category (Goal)</label>
-                                    <select
-                                        value={formMembership.fitness_category}
-                                        onChange={e => setFormMembership({ ...formMembership, fitness_category: e.target.value })}
-                                        className="w-full px-3 py-2 bg-zinc-900 border border-amber-500/40 rounded-lg text-amber-300 font-bold focus:border-amber-500 outline-none"
-                                    >
-                                        <option value="weight_loss">Weight Loss</option>
-                                        <option value="weight_gain">Weight Gain</option>
-                                        <option value="general_fitness">General Fitness</option>
-                                    </select>
-                                </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Height</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. 178 cm"
+                                                value={formMembership.height}
+                                                onChange={e => setFormMembership({ ...formMembership, height: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Weight</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. 74 kg"
+                                                value={formMembership.weight}
+                                                onChange={e => setFormMembership({ ...formMembership, weight: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
 
-                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block font-semibold text-zinc-400 mb-1">Total Fee (₹)</label>
+                                        <label className="block font-semibold text-zinc-400 mb-1">Address</label>
                                         <input
-                                            type="number"
-                                            value={formMembership.total_fee}
-                                            onChange={e => setFormMembership({ ...formMembership, total_fee: e.target.value })}
-                                            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            type="text"
+                                            value={formMembership.address}
+                                            onChange={e => setFormMembership({ ...formMembership, address: e.target.value })}
+                                            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block font-semibold text-zinc-400 mb-1">Paid Fee (₹)</label>
-                                        <input
-                                            type="number"
-                                            value={formMembership.paid_fee}
-                                            onChange={e => setFormMembership({ ...formMembership, paid_fee: e.target.value })}
-                                            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-emerald-400 font-bold focus:border-amber-500 outline-none"
-                                        />
+
+                                    {/* Medical Conditions */}
+                                    <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-semibold text-zinc-300">Has Medical Condition?</span>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormMembership({ ...formMembership, has_medical_condition: false, medical_condition_reason: '' })}
+                                                    className={`px-3 py-1 rounded-lg text-[11px] font-bold ${!formMembership.has_medical_condition ? 'bg-emerald-500 text-black' : 'bg-zinc-800 text-zinc-400'}`}
+                                                >
+                                                    No
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormMembership({ ...formMembership, has_medical_condition: true })}
+                                                    className={`px-3 py-1 rounded-lg text-[11px] font-bold ${formMembership.has_medical_condition ? 'bg-red-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                                                >
+                                                    Yes
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {formMembership.has_medical_condition && (
+                                            <div>
+                                                <label className="block font-semibold text-red-300 mb-1">Medical Condition Reason</label>
+                                                <input
+                                                    type="text"
+                                                    value={formMembership.medical_condition_reason}
+                                                    onChange={e => setFormMembership({ ...formMembership, medical_condition_reason: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-zinc-950 border border-red-500/40 rounded-lg text-white focus:border-red-400 outline-none"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Injuries / Surgeries History</label>
+                                            <input
+                                                type="text"
+                                                value={formMembership.injuries_surgeries}
+                                                onChange={e => setFormMembership({ ...formMembership, injuries_surgeries: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="p-3 bg-zinc-900/90 rounded-lg border border-zinc-800 flex justify-between items-center">
-                                    <span className="text-zinc-400">Calculated Balance Due:</span>
-                                    <span className="font-extrabold text-amber-400 text-sm">
-                                        ₹{Math.max(0, parseFloat(formMembership.total_fee || 0) - parseFloat(formMembership.paid_fee || 0)).toLocaleString()}
-                                    </span>
-                                </div>
+                                {/* Section: Membership & Financial Details */}
+                                <div className="p-3.5 bg-zinc-900 rounded-xl border border-zinc-800 space-y-3">
+                                    <div className="font-bold text-amber-400 uppercase tracking-wide text-[11px]">2. Membership Plan & Financials</div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block font-semibold text-zinc-400 mb-1">Date of Joining</label>
-                                        <input
-                                            type="date"
-                                            value={formMembership.date_of_joining}
-                                            onChange={e => setFormMembership({ ...formMembership, date_of_joining: e.target.value })}
-                                            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
-                                        />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Plan Duration</label>
+                                            <select
+                                                value={formMembership.plan_name}
+                                                onChange={e => {
+                                                    const p = PLAN_PRESETS.find(pr => pr.id === e.target.value);
+                                                    setFormMembership({
+                                                        ...formMembership,
+                                                        plan_name: e.target.value,
+                                                        plan_title: p?.title || formMembership.plan_title,
+                                                        total_fee: p?.fee || formMembership.total_fee
+                                                    });
+                                                }}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            >
+                                                {PLAN_PRESETS.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.title} (₹{p.fee.toLocaleString()})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Payment Mode</label>
+                                            <select
+                                                value={formMembership.payment_mode}
+                                                onChange={e => setFormMembership({ ...formMembership, payment_mode: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white uppercase focus:border-amber-500 outline-none"
+                                            >
+                                                {PAYMENT_MODES.map(pm => (
+                                                    <option key={pm.id} value={pm.id}>{pm.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block font-semibold text-zinc-400 mb-1">Membership Status</label>
-                                        <select
-                                            value={formMembership.status}
-                                            onChange={e => setFormMembership({ ...formMembership, status: e.target.value })}
-                                            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
-                                        >
-                                            <option value="active">Active</option>
-                                            <option value="pending">Pending Renewal</option>
-                                            <option value="expired">Expired</option>
-                                        </select>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Total Fee (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={formMembership.total_fee}
+                                                onChange={e => setFormMembership({ ...formMembership, total_fee: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Paid Fee (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={formMembership.paid_fee}
+                                                onChange={e => setFormMembership({ ...formMembership, paid_fee: e.target.value })}
+                                                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-emerald-400 font-bold focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="p-2.5 bg-zinc-950 rounded-lg border border-zinc-800 flex justify-between items-center">
+                                        <span className="text-zinc-400">Calculated Balance Due:</span>
+                                        <span className="font-extrabold text-amber-400 text-sm font-mono">
+                                            ₹{Math.max(0, parseFloat(formMembership.total_fee || 0) - parseFloat(formMembership.paid_fee || 0)).toLocaleString()}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Date of Joining</label>
+                                            <input
+                                                type="date"
+                                                value={formMembership.date_of_joining}
+                                                onChange={e => setFormMembership({ ...formMembership, date_of_joining: e.target.value })}
+                                                className="w-full px-2.5 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">End Date</label>
+                                            <input
+                                                type="date"
+                                                value={formMembership.end_date}
+                                                onChange={e => setFormMembership({ ...formMembership, end_date: e.target.value })}
+                                                className="w-full px-2.5 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block font-semibold text-zinc-400 mb-1">Status</label>
+                                            <select
+                                                value={formMembership.status}
+                                                onChange={e => setFormMembership({ ...formMembership, status: e.target.value })}
+                                                className="w-full px-2.5 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
+                                            >
+                                                <option value="active">Active</option>
+                                                <option value="pending">Pending Renewal</option>
+                                                <option value="expired">Expired</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -990,15 +1311,15 @@ export default function AdminPortal() {
                                     <button
                                         type="button"
                                         onClick={() => setEditingMember(null)}
-                                        className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white"
+                                        className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold shadow-md shadow-amber-500/20"
+                                        className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold shadow-md shadow-amber-500/20"
                                     >
-                                        Save Changes
+                                        Save All Changes
                                     </button>
                                 </div>
                             </form>

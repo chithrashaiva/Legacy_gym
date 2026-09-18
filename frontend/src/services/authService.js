@@ -24,5 +24,20 @@ export const authService = {
 
     getCurrentUser() {
         return JSON.parse(localStorage.getItem('user'));
+    },
+
+    async getCaptcha() {
+        try {
+            const response = await api.get('/auth/captcha/');
+            return response.data;
+        } catch (err) {
+            // fallback client-side generation if offline
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return { captcha_code: code, captcha_token: 'local_' + code };
+        }
     }
 };

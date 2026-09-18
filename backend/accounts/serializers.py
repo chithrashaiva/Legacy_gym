@@ -6,6 +6,9 @@ from .models import (
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class MembershipSerializer(serializers.ModelSerializer):
+    payment_mode_display = serializers.CharField(source='get_payment_mode_display', read_only=True)
+    plan_name_display = serializers.CharField(source='get_plan_name_display', read_only=True)
+
     class Meta:
         model = Membership
         fields = '__all__'
@@ -14,19 +17,41 @@ class MembershipSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     membership = MembershipSerializer(read_only=True)
     fitness_category_display = serializers.CharField(source='get_fitness_category_display', read_only=True)
+    gender_display = serializers.CharField(source='get_gender_display', read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'fitness_category', 'fitness_category_display', 'phone', 'date_of_birth', 'gender', 'membership')
+        fields = (
+            'id', 'username', 'email', 'first_name', 'last_name', 'role',
+            'fitness_category', 'fitness_category_display', 'phone',
+            'date_of_birth', 'gender', 'gender_display', 'address',
+            'height', 'weight', 'has_medical_condition',
+            'medical_condition_reason', 'injuries_surgeries', 'membership'
+        )
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     fitness_category = serializers.CharField(required=False, default='general_fitness')
+    
+    # Optional membership configuration fields passed during registration
+    plan_name = serializers.CharField(write_only=True, required=False, default='3_months')
+    plan_title = serializers.CharField(write_only=True, required=False, default='')
+    date_of_joining = serializers.DateField(write_only=True, required=False, allow_null=True)
+    end_date = serializers.DateField(write_only=True, required=False, allow_null=True)
+    total_fee = serializers.DecimalField(write_only=True, max_digits=10, decimal_places=2, required=False, default=4999.00)
+    paid_fee = serializers.DecimalField(write_only=True, max_digits=10, decimal_places=2, required=False, default=4999.00)
+    payment_mode = serializers.CharField(write_only=True, required=False, default='upi')
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'phone', 'date_of_birth', 'gender', 'fitness_category')
+        fields = (
+            'id', 'username', 'email', 'password', 'first_name', 'last_name',
+            'phone', 'date_of_birth', 'gender', 'address', 'height', 'weight',
+            'has_medical_condition', 'medical_condition_reason', 'injuries_surgeries',
+            'fitness_category',
+            'plan_name', 'plan_title', 'date_of_joining', 'end_date', 'total_fee', 'paid_fee', 'payment_mode'
+        )
         extra_kwargs = {
             'email': {'required': False, 'allow_blank': True},
             'first_name': {'required': False, 'allow_blank': True},
@@ -34,11 +59,30 @@ class RegisterSerializer(serializers.ModelSerializer):
             'phone': {'required': False, 'allow_blank': True, 'allow_null': True},
             'date_of_birth': {'required': False, 'allow_null': True},
             'gender': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'address': {'required': False, 'allow_blank': True},
+            'height': {'required': False, 'allow_blank': True},
+            'weight': {'required': False, 'allow_blank': True},
+            'has_medical_condition': {'required': False},
+            'medical_condition_reason': {'required': False, 'allow_blank': True},
+            'injuries_surgeries': {'required': False, 'allow_blank': True},
             'fitness_category': {'required': False},
         }
 
     def create(self, validated_data):
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # Extract membership specific fields
+        plan_name = validated_data.pop('plan_name', '3_months')
+        plan_title = validated_data.pop('plan_title', '')
+        date_of_joining = validated_data.pop('date_of_joining', None)
+        end_date = validated_data.pop('end_date', None)
+        total_fee = validated_data.pop('total_fee', 4999.00)
+        paid_fee = validated_data.pop('paid_fee', 4999.00)
+        payment_mode = validated_data.pop('payment_mode', 'upi')
+
         fitness_cat = validated_data.get('fitness_category', 'general_fitness')
+
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data.get('email', ''),
@@ -48,23 +92,51 @@ class RegisterSerializer(serializers.ModelSerializer):
             phone=validated_data.get('phone', ''),
             date_of_birth=validated_data.get('date_of_birth'),
             gender=validated_data.get('gender', ''),
+            address=validated_data.get('address', ''),
+            height=validated_data.get('height', ''),
+            weight=validated_data.get('weight', ''),
+            has_medical_condition=validated_data.get('has_medical_condition', False),
+            medical_condition_reason=validated_data.get('medical_condition_reason', ''),
+            injuries_surgeries=validated_data.get('injuries_surgeries', ''),
             fitness_category=fitness_cat,
             role='member'
         )
-        from django.utils import timezone
-        from datetime import timedelta
+
         today = timezone.now().date()
+        joining_date = date_of_joining or today
+
+        # Calculate default end date based on selected plan if not provided
+        plan_titles = {
+            '1_month': '1 Month Starter',
+            '3_months': '3 Months Pro',
+            '6_months': '6 Months Elite',
+            '12_months': '12 Months Annual VIP',
+        }
+        plan_durations = {
+            '1_month': 30,
+            '3_months': 90,
+            '6_months': 180,
+            '12_months': 365,
+        }
+
+        if not plan_title:
+            plan_title = plan_titles.get(plan_name, '3 Months Pro')
+
+        if not end_date:
+            days = plan_durations.get(plan_name, 90)
+            end_date = joining_date + timedelta(days=days)
+
         Membership.objects.create(
             user=user,
-            plan_name='3_months',
-            plan_title='3 Months Pro',
+            plan_name=plan_name,
+            plan_title=plan_title,
             fitness_category=fitness_cat,
-            date_of_joining=today,
-            start_date=today,
-            end_date=today + timedelta(days=90),
-            total_fee=9999.00,
-            paid_fee=6000.00,
-            balance_due=3999.00,
+            date_of_joining=joining_date,
+            start_date=joining_date,
+            end_date=end_date,
+            total_fee=total_fee,
+            paid_fee=paid_fee,
+            payment_mode=payment_mode,
             status='active'
         )
         return user

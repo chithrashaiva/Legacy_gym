@@ -6,7 +6,7 @@ import {
     Dumbbell, Calendar, Apple, Bell, ShieldAlert,
     CheckCircle2, Clock, Flame, ChevronRight, User as UserIcon,
     AlertCircle, Sparkles, Trophy, ArrowRight, Utensils, Plus,
-    FileText, ShieldCheck, AlertTriangle, Activity
+    FileText, ShieldCheck, AlertTriangle, Activity, Target, HeartPulse
 } from 'lucide-react';
 
 const DAYS = [
@@ -184,19 +184,65 @@ export default function MemberDashboard() {
 
                 {/* 1. Hero & Membership Details Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Welcome Banner */}
+                    {/* Welcome Banner & Health Profile */}
                     <div className="lg:col-span-2 relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800 p-6 md:p-8 flex flex-col justify-between">
                         <div className="absolute -right-12 -top-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
                         <div className="relative z-10 space-y-4">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider">
-                                <Trophy className="w-3.5 h-3.5" /> Client Athletic Center
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+                                    <Trophy className="w-3.5 h-3.5" /> Client Athletic Center
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold">
+                                    <Target className="w-3.5 h-3.5 text-amber-400" />
+                                    Goal: <span className="text-amber-300 capitalize">{currentUser.fitness_category_display || currentUser.fitness_category?.replace('_', ' ') || 'General Fitness'}</span>
+                                </div>
                             </div>
+
                             <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
                                 Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">{currentUser.first_name || currentUser.username}</span>!
                             </h1>
-                            <p className="text-zinc-400 text-sm max-w-xl leading-relaxed">
-                                Your personalized weekly fitness protocol, nutritional guidelines, category guidance, and trainer instructions are prepared and synced in real-time.
-                            </p>
+
+                            {/* Member Personal & Medical Metrics Bar */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                                <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800">
+                                    <div className="text-[11px] text-zinc-400 font-semibold">Height / Weight</div>
+                                    <div className="text-sm font-bold text-white mt-0.5">{currentUser.height || '—'} / {currentUser.weight || '—'}</div>
+                                </div>
+                                <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800">
+                                    <div className="text-[11px] text-zinc-400 font-semibold">Gender / DOB</div>
+                                    <div className="text-sm font-bold text-white mt-0.5">
+                                        {currentUser.gender_display || currentUser.gender || '—'}
+                                        {currentUser.date_of_birth && ` • ${currentUser.date_of_birth}`}
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800">
+                                    <div className="text-[11px] text-zinc-400 font-semibold">Medical Record</div>
+                                    <div className="text-xs font-bold mt-0.5">
+                                        {currentUser.has_medical_condition ? (
+                                            <span className="text-red-400 flex items-center gap-1">
+                                                <HeartPulse className="w-3 h-3 text-red-500" /> Condition Alert
+                                            </span>
+                                        ) : (
+                                            <span className="text-emerald-400">✓ Clear & Fit</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800">
+                                    <div className="text-[11px] text-zinc-400 font-semibold">Payment Mode</div>
+                                    <div className="text-xs font-bold text-amber-400 mt-0.5 uppercase">
+                                        {membership.payment_mode || 'UPI'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {currentUser.has_medical_condition && currentUser.medical_condition_reason && (
+                                <div className="p-3 bg-red-950/40 border border-red-900/50 rounded-xl text-xs text-red-300 flex items-start gap-2">
+                                    <HeartPulse className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <strong>Medical Advisory Note:</strong> {currentUser.medical_condition_reason}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Quick Day Selector Indicator */}
@@ -229,12 +275,14 @@ export default function MemberDashboard() {
 
                             <div>
                                 <h3 className="text-xl font-bold text-white">{membership.plan_title || '3 Months Pro'}</h3>
-                                <p className="text-xs text-zinc-400 mt-0.5">Joined: <span className="text-zinc-200 font-medium">{membership.date_of_joining}</span></p>
-                                <p className="text-xs text-zinc-400">Expires: <span className={`font-semibold ${isExpired ? 'text-red-400' : 'text-zinc-300'}`}>{membership.end_date}</span></p>
+                                <div className="flex items-center justify-between text-xs text-zinc-400 mt-1">
+                                    <span>Joined: <strong className="text-zinc-200">{membership.date_of_joining}</strong></span>
+                                    <span>Expires: <strong className={isExpired ? 'text-red-400' : 'text-zinc-300'}>{membership.end_date}</strong></span>
+                                </div>
                             </div>
 
                             {/* Dues & Fees Breakdown */}
-                            <div className="bg-zinc-900/80 rounded-xl p-4 border border-zinc-800/80 space-y-3">
+                            <div className="bg-zinc-900/80 rounded-xl p-4 border border-zinc-800/80 space-y-2.5">
                                 <div className="flex justify-between text-xs text-zinc-400">
                                     <span>Total Plan Fee</span>
                                     <span className="font-semibold text-zinc-200">₹{parseFloat(membership.total_fee || 0).toLocaleString()}</span>
@@ -242,6 +290,10 @@ export default function MemberDashboard() {
                                 <div className="flex justify-between text-xs text-zinc-400">
                                     <span>Fees Paid</span>
                                     <span className="font-semibold text-emerald-400">₹{parseFloat(membership.paid_fee || 0).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-xs text-zinc-400">
+                                    <span>Payment Mode</span>
+                                    <span className="font-bold text-amber-400 uppercase">{membership.payment_mode || 'UPI'}</span>
                                 </div>
                                 <div className="pt-2 border-t border-zinc-800 flex justify-between items-center">
                                     <span className="text-xs font-bold text-zinc-300">Balance Due</span>

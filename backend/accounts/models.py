@@ -11,21 +11,29 @@ class User(AbstractUser):
     )
     FITNESS_CATEGORY_CHOICES = (
         ('weight_loss', 'Weight Loss'),
-        ('weight_gain', 'Weight Gain'),
         ('general_fitness', 'General Fitness'),
+        ('strength_training', 'Strength Training'),
+        ('muscle_gain', 'Muscle Gain'),
+        ('body_transformation', 'Body Transformation'),
     )
-    
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
-    fitness_category = models.CharField(max_length=30, choices=FITNESS_CATEGORY_CHOICES, default='general_fitness')
-    phone = models.CharField(max_length=15, blank=True, null=True)
-    profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
     GENDER_CHOICES = (
         ('M', 'Male'),
         ('F', 'Female'),
         ('O', 'Other'),
     )
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
+    
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
+    fitness_category = models.CharField(max_length=30, choices=FITNESS_CATEGORY_CHOICES, default='general_fitness')
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
+    address = models.TextField(blank=True, default='')
+    height = models.CharField(max_length=30, blank=True, default='')
+    weight = models.CharField(max_length=30, blank=True, default='')
+    has_medical_condition = models.BooleanField(default=False)
+    medical_condition_reason = models.TextField(blank=True, default='')
+    injuries_surgeries = models.TextField(blank=True, default='')
 
     def __str__(self):
         return f"{self.username} ({self.role} - {self.get_fitness_category_display()})"
@@ -36,12 +44,18 @@ class Membership(models.Model):
         ('1_month', '1 Month Starter'),
         ('3_months', '3 Months Pro'),
         ('6_months', '6 Months Elite'),
-        ('annual', 'Annual VIP Legacy'),
+        ('12_months', '12 Months Annual VIP'),
     )
     STATUS_CHOICES = (
         ('active', 'Active'),
         ('pending', 'Pending Renewal'),
         ('expired', 'Expired'),
+    )
+    PAYMENT_MODE_CHOICES = (
+        ('cash', 'Cash'),
+        ('card', 'Card (Debit / Credit)'),
+        ('upi', 'UPI (GPay / PhonePe / Paytm)'),
+        ('bank_transfer', 'Bank Transfer (NEFT / IMPS)'),
     )
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='membership')
@@ -51,9 +65,10 @@ class Membership(models.Model):
     date_of_joining = models.DateField(default=timezone.now, null=True, blank=True)
     start_date = models.DateField(default=timezone.now, null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
-    total_fee = models.DecimalField(max_digits=10, decimal_places=2, default=9999.00)
-    paid_fee = models.DecimalField(max_digits=10, decimal_places=2, default=6000.00)
-    balance_due = models.DecimalField(max_digits=10, decimal_places=2, default=3999.00)
+    total_fee = models.DecimalField(max_digits=10, decimal_places=2, default=4999.00)
+    paid_fee = models.DecimalField(max_digits=10, decimal_places=2, default=4999.00)
+    balance_due = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    payment_mode = models.CharField(max_length=30, choices=PAYMENT_MODE_CHOICES, default='upi')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
