@@ -11,6 +11,8 @@ import Contact from './pages/Contact';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import QRCodePage from './pages/QRCodePage';
+import MemberDashboard from './pages/MemberDashboard';
+import AdminPortal from './pages/AdminPortal';
 
 // A simple protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -20,26 +22,6 @@ const ProtectedRoute = ({ children }) => {
     }
     return children;
 };
-
-// A placeholder for the dashboard until Phase 6
-const DashboardPlaceholder = () => {
-    const { user, logout } = useContext(AuthContext);
-    return (
-        <div className="min-h-screen bg-black text-white p-8">
-            <h1 className="text-3xl text-amber-500 font-bold mb-4">Legacy Fitness Lounge Dashboard</h1>
-            <p>Welcome back, {user?.first_name || user?.username}!</p>
-            <div className="mt-8">
-                <button
-                    onClick={logout}
-                    className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded hover:bg-zinc-700 text-amber-500"
-                >
-                    Logout
-                </button>
-            </div>
-        </div>
-    );
-};
-
 
 function App() {
     return (
@@ -59,15 +41,21 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
 
-                    {/* Protected Routes */}
+                    {/* Member Dashboard */}
                     <Route
                         path="/dashboard"
                         element={
                             <ProtectedRoute>
-                                <DashboardPlaceholder />
+                                <MemberDashboard />
                             </ProtectedRoute>
                         }
                     />
+
+                    {/* Direct link demo access for review */}
+                    <Route path="/member-dashboard" element={<MemberDashboard />} />
+
+                    {/* Gym Admin / Trainer Portal */}
+                    <Route path="/admin-portal" element={<AdminPortal />} />
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="/" replace />} />
