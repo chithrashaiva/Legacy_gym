@@ -194,6 +194,7 @@ export default function AdminPortal() {
         setEditingMember(member);
         setFormMembership({
             plan_title: mem.plan_title || '3 Months Pro',
+            fitness_category: member.fitness_category || mem.fitness_category || 'general_fitness',
             total_fee: mem.total_fee || '9999.00',
             paid_fee: mem.paid_fee || '6000.00',
             status: mem.status || 'active',
@@ -898,6 +899,19 @@ export default function AdminPortal() {
                                         onChange={e => setFormMembership({ ...formMembership, plan_title: e.target.value })}
                                         className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-white focus:border-amber-500 outline-none"
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block font-semibold text-amber-400 mb-1 font-bold">Assigned Fitness Category (Goal)</label>
+                                    <select
+                                        value={formMembership.fitness_category}
+                                        onChange={e => setFormMembership({ ...formMembership, fitness_category: e.target.value })}
+                                        className="w-full px-3 py-2 bg-zinc-900 border border-amber-500/40 rounded-lg text-amber-300 font-bold focus:border-amber-500 outline-none"
+                                    >
+                                        <option value="weight_loss">Weight Loss</option>
+                                        <option value="weight_gain">Weight Gain</option>
+                                        <option value="general_fitness">General Fitness</option>
+                                    </select>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">

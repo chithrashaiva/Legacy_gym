@@ -39,6 +39,9 @@ class MemberDashboardSummaryView(APIView):
         user = request.user if request.user.is_authenticated else None
         today = timezone.now().date()
         
+        # Determine member category (default to weight_loss or general_fitness)
+        member_category = getattr(user, 'fitness_category', 'weight_loss') if user else 'weight_loss'
+
         # 1. Membership
         membership_data = None
         is_expired = False
@@ -57,6 +60,7 @@ class MemberDashboardSummaryView(APIView):
             membership_data = {
                 'plan_name': '3_months',
                 'plan_title': '3 Months Pro Elite',
+                'fitness_category': member_category,
                 'date_of_joining': (today - timedelta(days=25)).isoformat(),
                 'start_date': (today - timedelta(days=25)).isoformat(),
                 'end_date': (today + timedelta(days=65)).isoformat(),
@@ -66,21 +70,28 @@ class MemberDashboardSummaryView(APIView):
                 'status': 'active'
             }
 
-        # 2. Daily Workouts
+        # 2. Daily Workouts (Filtered by member's category or user assigned)
         workouts = WorkoutPlan.objects.filter(user=user) if user else WorkoutPlan.objects.none()
         if not workouts.exists():
-            workouts = WorkoutPlan.objects.filter(user__isnull=True)
+            workouts = WorkoutPlan.objects.filter(category=member_category)
+            if not workouts.exists():
+                workouts = WorkoutPlan.objects.filter(category='general_fitness')
+            if not workouts.exists():
+                workouts = WorkoutPlan.objects.all()
+
         workout_data = WorkoutPlanSerializer(workouts, many=True).data
 
-        # 3. Diet Plans
-        diets = DietPlan.objects.all()
+        # 3. Diet Plans (Filtered by member's category or all)
+        diets = DietPlan.objects.filter(category=member_category)
+        if not diets.exists():
+            diets = DietPlan.objects.all()
         diet_data = DietPlanSerializer(diets, many=True).data
 
         # 4. Trainer Instructions
         instructions = TrainerInstruction.objects.all()[:10]
         instruction_data = TrainerInstructionSerializer(instructions, many=True).data
 
-        # 5. Category Guidance for General Fitness, Weight Loss, Weight Gain
+        # 5. Category Guidance
         guidance_records = CategoryGuidance.objects.all()
         guidance_data = CategoryGuidanceSerializer(guidance_records, many=True).data
 
@@ -90,6 +101,7 @@ class MemberDashboardSummaryView(APIView):
 
         return Response({
             'membership': membership_data,
+            'member_category': member_category,
             'is_expired': is_expired,
             'expiration_alert': expiration_alert,
             'workouts': workout_data,
@@ -101,7 +113,8 @@ class MemberDashboardSummaryView(APIView):
                 'username': 'Guest Member',
                 'first_name': 'Alex',
                 'last_name': 'Vance',
-                'role': 'member'
+                'role': 'member',
+                'fitness_category': member_category
             }
         })
 
@@ -114,7 +127,6 @@ class AdminPortalOverviewView(APIView):
         members = User.objects.filter(role='member')
         members_data = UserSerializer(members, many=True).data
 
-        # Auto-update status for expired memberships
         expired_members = []
         for m in members:
             if hasattr(m, 'membership'):
@@ -127,6 +139,7 @@ class AdminPortalOverviewView(APIView):
                         'id': m.id,
                         'name': f"{m.first_name} {m.last_name}".strip() or m.username,
                         'plan_title': mem.plan_title,
+                        'category': m.fitness_category,
                         'end_date': str(mem.end_date),
                         'balance_due': str(mem.balance_due)
                     })
@@ -173,6 +186,11 @@ class UpdateMembershipView(APIView):
                     'end_date': timezone.now().date() + timedelta(days=90)
                 }
             )
+            if 'fitness_category' in request.data:
+                user.fitness_category = request.data['fitness_category']
+                user.save()
+                membership.fitness_category = request.data['fitness_category']
+
             if 'plan_title' in request.data:
                 membership.plan_title = request.data['plan_title']
             if 'total_fee' in request.data:

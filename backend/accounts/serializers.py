@@ -13,18 +13,20 @@ class MembershipSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     membership = MembershipSerializer(read_only=True)
+    fitness_category_display = serializers.CharField(source='get_fitness_category_display', read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone', 'date_of_birth', 'gender', 'membership')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role', 'fitness_category', 'fitness_category_display', 'phone', 'date_of_birth', 'gender', 'membership')
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    fitness_category = serializers.CharField(required=False, default='general_fitness')
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'phone', 'date_of_birth', 'gender')
+        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'phone', 'date_of_birth', 'gender', 'fitness_category')
         extra_kwargs = {
             'email': {'required': False, 'allow_blank': True},
             'first_name': {'required': False, 'allow_blank': True},
@@ -32,9 +34,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             'phone': {'required': False, 'allow_blank': True, 'allow_null': True},
             'date_of_birth': {'required': False, 'allow_null': True},
             'gender': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'fitness_category': {'required': False},
         }
 
     def create(self, validated_data):
+        fitness_cat = validated_data.get('fitness_category', 'general_fitness')
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data.get('email', ''),
@@ -44,6 +48,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             phone=validated_data.get('phone', ''),
             date_of_birth=validated_data.get('date_of_birth'),
             gender=validated_data.get('gender', ''),
+            fitness_category=fitness_cat,
             role='member'
         )
         from django.utils import timezone
@@ -53,6 +58,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             user=user,
             plan_name='3_months',
             plan_title='3 Months Pro',
+            fitness_category=fitness_cat,
             date_of_joining=today,
             start_date=today,
             end_date=today + timedelta(days=90),

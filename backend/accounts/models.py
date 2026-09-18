@@ -9,8 +9,14 @@ class User(AbstractUser):
         ('admin', 'Admin'),
         ('super_admin', 'Super Admin'),
     )
+    FITNESS_CATEGORY_CHOICES = (
+        ('weight_loss', 'Weight Loss'),
+        ('weight_gain', 'Weight Gain'),
+        ('general_fitness', 'General Fitness'),
+    )
     
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member')
+    fitness_category = models.CharField(max_length=30, choices=FITNESS_CATEGORY_CHOICES, default='general_fitness')
     phone = models.CharField(max_length=15, blank=True, null=True)
     profile_image = models.ImageField(upload_to='profiles/', blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
@@ -22,7 +28,7 @@ class User(AbstractUser):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.username} ({self.role})"
+        return f"{self.username} ({self.role} - {self.get_fitness_category_display()})"
 
 
 class Membership(models.Model):
@@ -41,6 +47,7 @@ class Membership(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='membership')
     plan_name = models.CharField(max_length=50, choices=PLAN_CHOICES, default='3_months')
     plan_title = models.CharField(max_length=100, default='3 Months Pro')
+    fitness_category = models.CharField(max_length=30, choices=User.FITNESS_CATEGORY_CHOICES, default='general_fitness')
     date_of_joining = models.DateField(default=timezone.now)
     start_date = models.DateField(default=timezone.now)
     end_date = models.DateField()
@@ -71,13 +78,13 @@ class WorkoutPlan(models.Model):
         ('sat', 'Saturday'),
     )
     CATEGORY_CHOICES = (
-        ('general', 'General Fitness'),
+        ('general_fitness', 'General Fitness'),
         ('weight_loss', 'Weight Loss'),
-        ('weight_gain', 'Weight Gain / Hypertrophy'),
+        ('weight_gain', 'Weight Gain'),
     )
 
     day_of_week = models.CharField(max_length=5, choices=DAY_CHOICES)
-    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='general')
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='general_fitness')
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='assigned_workouts')
     title = models.CharField(max_length=150)
     focus_muscle = models.CharField(max_length=100)
